@@ -2,6 +2,9 @@
   "name": "abap-clean-core-ai-fiori-new",
   "version": "1.0.0",
   "description": "AI 助手平台 - 基于阿里云百炼的 ABAP Clean Core Helper",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@sap/cds": "^9",
     "@sap/xssec": "^4",

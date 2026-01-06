@@ -64,7 +64,7 @@ sap.ui.define([
             
             // 动态加载 Mermaid
             var script = document.createElement("script");
-            script.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+            script.src = sap.ui.require.toUrl("com/ai/assistant/aichatapp/lib/mermaid.min.js");
             script.onload = function () {
                 that._configureMermaid();
                 console.log("[Diagram] Mermaid 库加载完成");

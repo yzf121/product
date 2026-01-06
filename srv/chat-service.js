@@ -29,6 +29,11 @@ module.exports = class ChatService extends cds.ApplicationService {
 
     // 调用阿里云百炼API（非流式）
     async callDashScope(message, sessionId) {
+        if (!DASHSCOPE_APP_ID || !DASHSCOPE_API_KEY) {
+            throw new Error('AI service configuration is missing');
+        }
+
+
         const requestBody = {
             input: {
                 prompt: message
@@ -40,7 +45,7 @@ module.exports = class ChatService extends cds.ApplicationService {
 
         // 如果有会话ID，添加到请求中以保持上下文
         if (sessionId) {
-            requestBody.parameters.session_id = sessionId;
+            requestBody.input.session_id = sessionId;
         }
 
         // 创建AbortController用于超时控制

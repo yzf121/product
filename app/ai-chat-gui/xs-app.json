@@ -15,6 +15,12 @@
       "destination": "ui5"
     },
     {
+      "source": "^/api/(.*)$",
+      "target": "/api/$1",
+      "authenticationType": "xsuaa",
+      "destination": "srv-api"
+    },
+    {
       "source": "^(.*)$",
       "target": "$1",
       "service": "html5-apps-repo-rt",

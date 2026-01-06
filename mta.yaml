@@ -17,8 +17,7 @@ modules:
     buildpack: nodejs_buildpack
     instances: 1
     memory: 256M
-    routes:
-      - route: abap-clean-core-ai-srv.139.224.7.71.nip.io
+    random-route: true
   build-parameters:
     builder: npm-ci
 
@@ -107,7 +106,7 @@ resources:
             ProxyType: Internet
             Type: HTTP
             URL: https://ui5.sap.com
-          - Authentication: NoAuthentication
+          - Authentication: OAuth2UserTokenExchange
             Name: srv-api
             ProxyType: Internet
             Type: HTTP
