@@ -106,14 +106,24 @@ sap.ui.define([
          * 初始化预览区域
          */
         _initPreviewArea: function () {
+            // 防止重复初始化
+            if (this._bPreviewInitializing) {
+                return;
+            }
+            
             var oPreviewContainer = this.byId("previewContainer");
-            if (!oPreviewContainer) return;
+            if (!oPreviewContainer) {
+                console.warn("[Diagram] previewContainer 未找到");
+                return;
+            }
             
             var oDomRef = oPreviewContainer.getDomRef();
             if (!oDomRef) {
                 // DOM 未准备好，延迟重试
                 var that = this;
+                this._bPreviewInitializing = true;
                 setTimeout(function() {
+                    that._bPreviewInitializing = false;
                     that._initPreviewArea();
                 }, 100);
                 return;
@@ -124,6 +134,8 @@ sap.ui.define([
             
             // 初始化拖拽和缩放
             this._initInteractions();
+            
+            console.log("[Diagram] 预览区域初始化完成");
         },
         
         /**
@@ -230,11 +242,27 @@ sap.ui.define([
          * 生成流程图
          */
         onGenerateDiagram: function () {
+            var that = this;
             var oModel = this.getView().getModel("diagram");
             var sInput = oModel.getProperty("/inputValue");
             
             if (!sInput || !sInput.trim()) {
                 MessageToast.show(this._getI18nText("pleaseEnterDescription"));
+                return;
+            }
+            
+            // 防止重复点击
+            if (oModel.getProperty("/isLoading")) {
+                return;
+            }
+            
+            // 确保预览区域已初始化
+            if (!this._oContentWrapper) {
+                this._initPreviewArea();
+                // 延迟执行，等待初始化完成
+                setTimeout(function() {
+                    that.onGenerateDiagram();
+                }, 200);
                 return;
             }
             
@@ -900,16 +928,36 @@ sap.ui.define([
                 console.warn("[Diagram] 复制失败");
             });
             
-            // 创建对话框
+            // 创建对话框（异步加载 Fragment）
             if (!this._oDrawioDialog) {
-                this._oDrawioDialog = sap.ui.xmlfragment(
-                    this.getView().getId(),
-                    "com.ai.assistant.aichatapp.view.DrawioDialog",
-                    this
-                );
-                this.getView().addDependent(this._oDrawioDialog);
+                // 第一次加载，使用 Promise 确保加载完成
+                this._bDrawioLoading = true;
+                sap.ui.core.Fragment.load({
+                    id: this.getView().getId(),
+                    name: "com.ai.assistant.aichatapp.view.DrawioDialog",
+                    controller: this
+                }).then(function(oDialog) {
+                    that._oDrawioDialog = oDialog;
+                    that.getView().addDependent(oDialog);
+                    that._bDrawioLoading = false;
+                    // 加载完成后打开
+                    oDialog.open();
+                    setTimeout(function () {
+                        that._initDrawioEmbed();
+                    }, 300);
+                }).catch(function(err) {
+                    console.error("[Diagram] Fragment 加载失败:", err);
+                    that._bDrawioLoading = false;
+                });
+                return; // 等待异步加载完成
             }
             
+            // 如果正在加载中，忽略重复点击
+            if (this._bDrawioLoading) {
+                return;
+            }
+            
+            // 已加载过，直接打开
             this._oDrawioDialog.open();
             
             setTimeout(function () {

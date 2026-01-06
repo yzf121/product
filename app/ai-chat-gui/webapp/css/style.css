@@ -780,7 +780,63 @@
 
 /* ===== Draw.io 对话框 ===== */
 
-/* 对话框整体样式 */
+/* 对话框整体样式 - 紧凑版 */
+.drawioDialogCompact .sapMDialogSection {
+    padding: 0 !important;
+}
+
+.drawioDialogCompact .sapMDialogScroll {
+    height: 100% !important;
+}
+
+/* 紧凑头部栏 - 单行显示所有内容 */
+.drawioCompactHeader {
+    background-color: #1a1a2e !important;
+    border-bottom: none !important;
+    height: 36px !important;
+    min-height: 36px !important;
+}
+
+.drawioCompactHeader .sapMBarLeft,
+.drawioCompactHeader .sapMBarRight {
+    background-color: transparent !important;
+}
+
+/* 紧凑提示文字 */
+.drawioCompactTip {
+    color: #ffc107 !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 200px);
+}
+
+.drawioCompactTip.sapMText {
+    color: #ffc107 !important;
+}
+
+/* 头部按钮样式 */
+.drawioCompactHeader .sapMBtn {
+    color: #ffffff !important;
+    min-width: 36px !important;
+}
+
+.drawioCompactHeader .sapMBtnTransparent .sapMBtnInner {
+    color: #ffffff !important;
+    padding: 0 0.5rem !important;
+}
+
+.drawioCompactHeader .sapMBtnTransparent:hover .sapMBtnInner {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.drawioCompactHeader .sapUiIcon {
+    color: #ffffff !important;
+}
+
+/* 旧版样式保留兼容 */
 .drawioDialogCustom .sapMDialogSection {
     padding: 0 !important;
 }
@@ -789,7 +845,6 @@
     height: 100% !important;
 }
 
-/* 头部栏样式 - 深色背景 */
 .drawioDialogHeader {
     background-color: #1a1a2e !important;
     border-bottom: none !important;
@@ -800,13 +855,11 @@
     background-color: transparent !important;
 }
 
-/* 头部标题样式 */
 .drawioDialogTitle {
     color: #ffffff !important;
     font-weight: 600 !important;
 }
 
-/* 头部按钮样式 */
 .drawioDialogHeader .sapMBtn {
     color: #ffffff !important;
 }
@@ -823,7 +876,6 @@
     color: #ffffff !important;
 }
 
-/* 提示栏样式 - 醒目的黄色背景 */
 .drawioTipBar {
     background-color: #fff3cd !important;
     border-bottom: 1px solid #ffc107 !important;
@@ -835,7 +887,6 @@
     background-color: #fff3cd !important;
 }
 
-/* 提示文字样式 - 深色文字 */
 .drawioTipText {
     color: #664d03 !important;
     font-size: 0.85rem !important;

@@ -5,33 +5,27 @@
     
     <Dialog
         id="drawioDialog"
-        title="Draw.io 编辑器"
-        contentWidth="95%"
-        contentHeight="90%"
+        contentWidth="98%"
+        contentHeight="95%"
         stretch="true"
         draggable="false"
         resizable="false"
         verticalScrolling="false"
         horizontalScrolling="false"
-        class="drawioDialogCustom">
+        class="drawioDialogCompact">
         <customHeader>
-            <Bar class="drawioDialogHeader">
+            <Bar class="drawioCompactHeader">
                 <contentLeft>
-                    <Title text="Draw.io 编辑器" class="drawioDialogTitle"/>
+                    <Text text="💡 Mermaid导入: Arrange→Insert→Advanced→Mermaid | 布局: Arrange→Layout | 线条: Edit→Select Edges" class="drawioCompactTip"/>
                 </contentLeft>
                 <contentRight>
-                    <Button text="导出 PNG" icon="sap-icon://download" press="onDrawioExportPNG" type="Transparent"/>
-                    <Button text="导出 SVG" icon="sap-icon://attachment-html" press="onDrawioExportSVG" type="Transparent"/>
-                    <Button text="复制图片" icon="sap-icon://copy" press="onDrawioCopyImage" type="Transparent"/>
-                    <Button text="关闭" press="onCloseDrawio" type="Reject"/>
+                    <Button icon="sap-icon://download" tooltip="导出 PNG" press="onDrawioExportPNG" type="Transparent"/>
+                    <Button icon="sap-icon://attachment-html" tooltip="导出 SVG" press="onDrawioExportSVG" type="Transparent"/>
+                    <Button icon="sap-icon://copy" tooltip="复制图片" press="onDrawioCopyImage" type="Transparent"/>
+                    <Button icon="sap-icon://decline" tooltip="关闭" press="onCloseDrawio" type="Reject"/>
                 </contentRight>
             </Bar>
         </customHeader>
-        <subHeader>
-            <Toolbar class="drawioTipBar">
-                <Text text="💡 操作提示：Arrange → Insert → Advanced → Mermaid 粘贴导入 | Arrange → Layout 调整布局 | Edit → Select Edges 修改线条样式" class="drawioTipText"/>
-            </Toolbar>
-        </subHeader>
         <content>
             <VBox id="drawioIframeBox" height="100%" width="100%"/>
         </content>
