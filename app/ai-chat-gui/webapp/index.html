@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ABAP CLEAN CORE HELPER - 基于阿里云百炼的ABAP助手">
+    <title>ABAP CLEAN CORE HELPER</title>
+    
+    <!-- SAP UI5 Bootstrap - 自动选择加载路径 -->
+    <script>
+        (function() {
+            // 判断是否为本地开发环境
+            var isLocalDev = window.location.hostname === 'localhost' || 
+                             window.location.hostname === '127.0.0.1';
+            
+            // 根据环境选择 UI5 资源路径
+            // 本地开发：使用 CDN（因为本地没有 ui5 代理）
+            // 生产环境：优先使用相对路径（通过 xs-app.json 路由），回退到 CDN
+            var ui5Src = isLocalDev 
+                ? 'https://sapui5.hana.ondemand.com/resources/sap-ui-core.js'
+                : 'resources/sap-ui-core.js';
+            
+            // 动态创建并插入 UI5 bootstrap script
+            var script = document.createElement('script');
+            script.id = 'sap-ui-bootstrap';
+            script.src = ui5Src;
+            script.setAttribute('data-sap-ui-theme', 'sap_horizon');
+            script.setAttribute('data-sap-ui-resourceroots', '{"com.ai.assistant.aichatapp": "./"}');
+            script.setAttribute('data-sap-ui-compatVersion', 'edge');
+            script.setAttribute('data-sap-ui-async', 'true');
+            script.setAttribute('data-sap-ui-frameOptions', 'trusted');
+            // 开发模式禁用预加载，避免 Component-preload.js 404 错误
+            script.setAttribute('data-sap-ui-preload', isLocalDev ? 'off' : 'async');
+            script.setAttribute('data-sap-ui-oninit', 'module:sap/ui/core/ComponentSupport');
+            
+            // 生产环境下，如果相对路径加载失败，回退到 CDN
+            if (!isLocalDev) {
+                script.onerror = function() {
+                    console.warn('相对路径加载 UI5 失败，回退到 CDN');
+                    script.src = 'https://sapui5.hana.ondemand.com/resources/sap-ui-core.js';
+                };
+            }
+            
+            document.head.appendChild(script);
+        })();
+    </script>
+    
+    <!-- marked.js - Markdown渲染库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // 检查marked是否加载成功，如果失败则提供简单的降级处理
+        if (typeof marked === 'undefined') {
+            console.warn('marked.js 加载失败，Markdown渲染将使用纯文本显示');
+            window.marked = {
+                parse: function(text) { return text; },
+                setOptions: function() {}
+            };
+        }
+    </script>
+    
+    <!-- highlight.js - 代码高亮库 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <script>
+        // 检查hljs是否加载成功
+        if (typeof hljs === 'undefined') {
+            console.warn('highlight.js 加载失败，代码高亮功能将不可用');
+            window.hljs = {
+                highlightElement: function() {}
+            };
+        }
+    </script>
+</head>
+<body class="sapUiBody" id="content">
+    <div data-sap-ui-component data-name="com.ai.assistant.aichatapp" data-id="container" data-settings='{"id": "aichatapp"}'></div>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "xsappname": "abap-clean-core-ai-fiori-new",
+  "tenant-mode": "dedicated",
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.user",
+      "description": "User access"
+    }
+  ],
+  "attributes": [],
+  "role-templates": [
+    {
+      "name": "User",
+      "description": "User role",
+      "scope-references": [
+        "$XSAPPNAME.user"
+      ]
+    }
+  ],
+  "role-collections": [
+    {
+      "name": "AIChat_User",
+      "description": "AI Chat Application User",
+      "role-template-references": [
+        "$XSAPPNAME.User"
+      ]
+    }
+  ],
+  "oauth2-configuration": {
+    "redirect-uris": [
+      "https://*.cfapps.*.hana.ondemand.com/**",
+      "https://*.launchpad.cfapps.*.hana.ondemand.com/**"
+    ]
+  }
+}

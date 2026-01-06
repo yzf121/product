@@ -1,0 +1,896 @@
+/* AI聊天助手样式 */
+
+/* 聊天容器 - 使用固定布局确保输入框始终可见 */
+.chatContainer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #f5f6f7;
+    overflow: hidden;
+}
+
+/* 消息滚动容器 - flex:1 自动填充剩余空间 */
+.messageScrollContainer {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* 消息列表 */
+.messageList {
+    max-width: none;
+    margin: 0;
+    width: 100%;
+    padding: 0 1rem;
+}
+
+/* 消息项 */
+.messageItem {
+    display: flex;
+    margin-bottom: 1rem;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 用户消息 - 右对齐，头像在右边 */
+.userMessage {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+}
+
+.userMessage .messageContent {
+    background-color: #0854a0;
+    color: white;
+    border-radius: 1rem 1rem 0 1rem;
+    margin-right: 0;
+    margin-left: auto;
+}
+
+.userMessage .avatarContainer {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* AI消息 - 左对齐 */
+.aiMessage {
+    flex-direction: row;
+}
+
+.aiMessage .messageContent {
+    background-color: white;
+    color: #333;
+    border-radius: 1rem 1rem 1rem 0;
+    margin-right: 3rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 头像容器 */
+.avatarContainer {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0.5rem;
+}
+
+/* 用户头像 */
+.userAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #0854a0;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* AI头像 */
+.aiAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #107e3e;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* 消息内容 */
+.messageContent {
+    max-width: 70%;
+    padding: 0.75rem 1rem;
+}
+
+.messageText {
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+/* Markdown样式 */
+.messageText p {
+    margin: 0 0 0.5rem 0;
+}
+
+.messageText p:last-child {
+    margin-bottom: 0;
+}
+
+.messageText ul,
+.messageText ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.messageText h1,
+.messageText h2,
+.messageText h3,
+.messageText h4 {
+    margin: 1rem 0 0.5rem 0;
+}
+
+.messageText h1:first-child,
+.messageText h2:first-child,
+.messageText h3:first-child {
+    margin-top: 0;
+}
+
+/* 代码块包装器 */
+.codeBlockWrapper {
+    position: relative;
+    margin: 0.5rem 0;
+}
+
+/* 代码块样式 */
+.messageText pre {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 0;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+}
+
+.messageText code {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+}
+
+.messageText p code,
+.messageText li code {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+}
+
+/* 复制按钮 */
+.copyButton {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: #3c3c3c;
+    color: #d4d4d4;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.copyButton:hover {
+    background-color: #505050;
+}
+
+
+/* 输入区域 - 固定在底部，高度自适应 */
+.inputArea {
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    background-color: white;
+    border-top: 1px solid #e5e5e5;
+    max-width: none;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: auto !important;
+    height: auto !important;
+}
+
+.inputArea.sapMTB {
+    height: auto !important;
+    min-height: auto !important;
+}
+
+/* 消息输入框 */
+.messageInput {
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-right: 0.75rem;
+}
+
+.messageInput textarea {
+    border-radius: 1rem !important;
+    padding: 0.75rem 1rem !important;
+    resize: none !important;
+    line-height: 1.5 !important;
+    font-size: 0.95rem !important;
+    width: 100% !important;
+}
+
+.messageInput .sapMTextAreaInner {
+    border-radius: 1rem !important;
+    width: 100% !important;
+}
+
+/* 输入区域内的 TextArea 容器 */
+.inputArea .sapMTextArea {
+    width: 100% !important;
+}
+
+/* 发送按钮 */
+.sendButton {
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+}
+
+/* 欢迎框 */
+.welcomeBox {
+    height: 100%;
+    padding: 2rem;
+    text-align: center;
+}
+
+/* 打字指示器 */
+.typingIndicator {
+    display: flex;
+    gap: 4px;
+    padding: 0.5rem 0;
+}
+
+.typingIndicator span {
+    width: 8px;
+    height: 8px;
+    background-color: #999;
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typingIndicator span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typingIndicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typingIndicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+    30% {
+        transform: translateY(-4px);
+        opacity: 1;
+    }
+}
+
+/* 对话列表样式 */
+.conversationTitle {
+    font-weight: 500;
+    color: #333;
+}
+
+.conversationDate {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+/* 侧边栏样式调整 */
+#sidebarPage {
+    background-color: #fafafa;
+}
+
+/* 聊天页面内容区域高度修复 - 关键样式 */
+#chatPage {
+    height: 100%;
+}
+
+#chatPage > section {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+}
+
+/* 确保 chatContainer 填满整个内容区域 */
+.chatContainer {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: auto !important;
+}
+
+/* ScrollContainer 内部样式修复 */
+.messageScrollContainer > div {
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .messageContent {
+        max-width: 85%;
+    }
+    
+    .userMessage .messageContent {
+        margin-left: 1rem;
+    }
+    
+    .aiMessage .messageContent {
+        margin-right: 1rem;
+    }
+    
+    /* 移动端输入区域优化 - 防止键盘遮挡 */
+    .inputArea {
+        padding: 0.75rem 1rem;
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+    }
+    
+    /* 移动端聊天容器使用相对定位 */
+    .chatContainer {
+        position: relative !important;
+        height: 100% !important;
+    }
+}
+
+/* iOS Safari 键盘弹出时的适配 */
+@supports (-webkit-touch-callout: none) {
+    .inputArea {
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+
+/* ==================== 首页 Launchpad 样式 ==================== */
+
+/* 首页背景 */
+.homePageBackground {
+    background: linear-gradient(180deg, #ffffff 0%, #f0f2f5 100%);
+}
+
+/* 欢迎区域 */
+.welcomeSection {
+    padding: 3rem 1rem 2rem 1rem;
+    text-align: center;
+}
+
+.welcomeSection .sapMTitle {
+    color: #1a1a2e !important;
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px;
+}
+
+.subtitleText {
+    color: #2c3e50 !important;
+    font-size: 1.1rem !important;
+    margin-top: 0.5rem;
+    font-weight: 500;
+}
+
+/* 分类标题 */
+.categoryTitle {
+    color: #1a1a2e !important;
+    font-size: 1.3rem !important;
+    font-weight: 600 !important;
+    border-left: 4px solid #0a6ed1;
+    padding-left: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* 卡片容器 */
+.tileContainer {
+    padding: 0.5rem 0;
+}
+
+/* AI助手卡片样式 */
+.aiTile {
+    background: linear-gradient(145deg, #0a6ed1 0%, #0854a0 100%) !important;
+    border: none !important;
+    min-width: 200px;
+}
+
+.aiTile .sapMGTHdrTxt {
+    color: #ffffff !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.aiTile .sapMGTSubHdrTxt,
+.aiTile .sapMText,
+.aiTile span[class*="SubHdr"] {
+    color: #e8f4ff !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    opacity: 1 !important;
+}
+
+.aiTile .sapUiIcon {
+    color: #ffffff !important;
+}
+
+.aiTile:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(10, 110, 209, 0.35);
+    transition: all 0.3s ease;
+}
+
+/* 工具卡片样式 */
+.toolTile {
+    background: linear-gradient(145deg, #107e3e 0%, #0a6c35 100%) !important;
+    border: none !important;
+    min-width: 200px;
+}
+
+.toolTile .sapMGTHdrTxt {
+    color: #ffffff !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.toolTile .sapMGTSubHdrTxt,
+.toolTile .sapMText,
+.toolTile span[class*="SubHdr"] {
+    color: #e8fff0 !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    opacity: 1 !important;
+}
+
+.toolTile .sapUiIcon {
+    color: #ffffff !important;
+}
+
+.toolTile:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(16, 126, 62, 0.35);
+    transition: all 0.3s ease;
+}
+
+/* 卡片通用样式 */
+.sapMGT {
+    border-radius: 16px !important;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.sapMGT:active {
+    transform: scale(0.97);
+}
+
+/* 卡片图标样式 */
+.sapMGT .sapUiIcon {
+    font-size: 2.5rem !important;
+}
+
+/* 卡片内容区域 */
+.sapMGT .sapMTileCntContent {
+    padding: 1rem !important;
+}
+
+/* 首页页面标题栏 */
+.homePageBackground .sapMBarMiddle .sapMTitle {
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    color: #1a1a2e !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .welcomeSection {
+        padding: 2rem 0.5rem 1rem 0.5rem;
+    }
+    
+    .welcomeSection .sapMTitle {
+        font-size: 1.5rem !important;
+    }
+    
+    .subtitleText {
+        font-size: 0.95rem !important;
+    }
+    
+    .tileContainer {
+        padding: 0.5rem 0;
+        justify-content: center;
+    }
+    
+    .categoryTitle {
+        font-size: 1.1rem !important;
+    }
+}
+
+
+/* 埃森哲 Logo 样式 */
+.accentureLogo {
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+
+/* 欢迎页 Logo 样式 */
+.welcomeLogo {
+    object-fit: contain;
+}
+
+
+/* ==================== Diagram Helper 样式 ==================== */
+
+/* Diagram Helper 卡片样式 */
+.diagramTile {
+    background: linear-gradient(145deg, #7c3aed 0%, #5b21b6 100%) !important;
+    border: none !important;
+    min-width: 200px;
+}
+
+.diagramTile .sapMGTHdrTxt {
+    color: #ffffff !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.diagramTile .sapMGTSubHdrTxt,
+.diagramTile .sapMText,
+.diagramTile span[class*="SubHdr"] {
+    color: #ede9fe !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    opacity: 1 !important;
+}
+
+.diagramTile .sapUiIcon {
+    color: #ffffff !important;
+}
+
+.diagramTile:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(124, 58, 237, 0.35);
+    transition: all 0.3s ease;
+}
+
+/* ===== 流程图页面核心布局 ===== */
+
+/* 左侧输入面板 */
+.diagramInputPanel {
+    background-color: #fafafa !important;
+    border-right: 1px solid #e0e0e0;
+}
+
+.diagramInputPanel > .sapUiVlt {
+    padding: 0 !important;
+}
+
+/* 右侧预览面板 */
+.diagramPreviewPanel {
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+}
+
+/* 工具栏 */
+.diagramToolbar {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+/* 预览内容区域 - 关键样式 */
+.diagramPreviewContent {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Mermaid 预览区域 */
+.mermaidPreviewArea {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: #f8f9fa;
+    /* 网格背景 */
+    background-image: 
+        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+    cursor: grab;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.mermaidPreviewArea:active {
+    cursor: grabbing;
+}
+
+/* Mermaid 内容包装器 */
+.mermaidContentWrapper {
+    display: inline-block;
+    min-width: 100%;
+    min-height: 100%;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+/* Mermaid 渲染容器 */
+.mermaidRenderContainer {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    padding: 2rem;
+    display: inline-block;
+}
+
+.mermaidRenderContainer svg {
+    display: block;
+    max-width: none !important;
+    height: auto !important;
+}
+
+/* 占位符 */
+.diagramPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    color: #999;
+    text-align: center;
+}
+
+.diagramPlaceholder p {
+    margin-top: 1rem;
+    font-size: 1rem;
+    color: #888;
+}
+
+/* 加载遮罩 */
+.diagramLoadingOverlay {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.92);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 渲染错误 */
+.renderErrorContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+    background-color: #fff8f8;
+    border: 2px solid #ffcdd2;
+    border-radius: 12px;
+    max-width: 600px;
+    margin: 2rem auto;
+}
+
+.renderErrorIcon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.renderErrorTitle {
+    color: #c62828;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.renderErrorMessage {
+    color: #5d4037;
+    font-size: 0.9rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    background-color: #ffffff;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: left;
+}
+
+.renderErrorHint {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+/* 代码视图 */
+.mermaidCodeView {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1.5rem;
+    margin: 1rem;
+    border-radius: 8px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    overflow: auto;
+    white-space: pre;
+    min-height: 300px;
+}
+
+.mermaidCodeView code {
+    font-family: inherit;
+}
+
+/* ===== Draw.io 对话框 ===== */
+
+/* 对话框整体样式 */
+.drawioDialogCustom .sapMDialogSection {
+    padding: 0 !important;
+}
+
+.drawioDialogCustom .sapMDialogScroll {
+    height: 100% !important;
+}
+
+/* 头部栏样式 - 深色背景 */
+.drawioDialogHeader {
+    background-color: #1a1a2e !important;
+    border-bottom: none !important;
+}
+
+.drawioDialogHeader .sapMBarLeft,
+.drawioDialogHeader .sapMBarRight {
+    background-color: transparent !important;
+}
+
+/* 头部标题样式 */
+.drawioDialogTitle {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+/* 头部按钮样式 */
+.drawioDialogHeader .sapMBtn {
+    color: #ffffff !important;
+}
+
+.drawioDialogHeader .sapMBtnTransparent .sapMBtnInner {
+    color: #ffffff !important;
+}
+
+.drawioDialogHeader .sapMBtnTransparent:hover .sapMBtnInner {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.drawioDialogHeader .sapUiIcon {
+    color: #ffffff !important;
+}
+
+/* 提示栏样式 - 醒目的黄色背景 */
+.drawioTipBar {
+    background-color: #fff3cd !important;
+    border-bottom: 1px solid #ffc107 !important;
+    padding: 0.5rem 1rem !important;
+    min-height: 44px !important;
+}
+
+.drawioTipBar.sapMTB {
+    background-color: #fff3cd !important;
+}
+
+/* 提示文字样式 - 深色文字 */
+.drawioTipText {
+    color: #664d03 !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+}
+
+.drawioTipText.sapMText {
+    color: #664d03 !important;
+}
+
+.drawioToolbar {
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+#drawioWrapper {
+    width: 100%;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+    background-color: #fafafa;
+}
+
+#drawioFrame {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Draw.io iframe 容器 */
+#drawioIframeBox {
+    background-color: #ffffff;
+}
+
+#drawioIframeBox iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 1200px) {
+    .diagramInputPanel {
+        min-width: 320px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .mermaidContentWrapper {
+        padding: 1rem;
+    }
+    
+    .mermaidRenderContainer {
+        padding: 1rem;
+    }
+}
+

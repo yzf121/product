@@ -1,0 +1,40 @@
+{
+  "name": "abap-clean-core-ai-fiori-new",
+  "version": "1.0.0",
+  "description": "AI 助手平台 - 基于阿里云百炼的 ABAP Clean Core Helper",
+  "dependencies": {
+    "@sap/cds": "^9",
+    "@sap/xssec": "^4",
+    "dotenv": "^16.3.1",
+    "express": "^4"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^2.1.2",
+    "@sap/cds-dk": "^9",
+    "cds-plugin-ui5": "^0.13.0",
+    "mbt": "^1.2.29",
+    "rimraf": "^5.0.5"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "dev": "cds watch --open ai-chat-gui/webapp/index.html?sap-ui-xx-viewCache=false",
+    "watch-ai-chat-gui": "cds watch --open ai-chat-gui/webapp/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "undeploy": "cf undeploy abap-clean-core-ai-fiori-new --delete-services --delete-service-keys --delete-service-brokers",
+    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
+  },
+  "private": true,
+  "cds": {
+    "requires": {
+      "[production]": {
+        "auth": "xsuaa",
+        "db": false
+      },
+      "destinations": true,
+      "html5-repo": true
+    }
+  },
+  "workspaces": [
+    "app/*"
+  ]
+}

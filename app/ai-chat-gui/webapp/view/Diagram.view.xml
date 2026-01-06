@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mvc:View
+    controllerName="com.ai.assistant.aichatapp.controller.Diagram"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout"
+    height="100%">
+    
+    <Page
+        id="diagramPage"
+        showHeader="true"
+        backgroundDesign="Solid"
+        enableScrolling="false">
+        <customHeader>
+            <Bar>
+                <contentLeft>
+                    <Button
+                        icon="sap-icon://nav-back"
+                        press="onNavBack"
+                        type="Transparent"
+                        tooltip="{i18n>backToHome}"/>
+                    <Title text="{i18n>diagramHelperTitle}" class="sapUiSmallMarginBegin"/>
+                </contentLeft>
+            </Bar>
+        </customHeader>
+        
+        <content>
+            <l:Splitter orientation="Horizontal" height="100%">
+                <!-- 左侧：输入区域 -->
+                <l:contentAreas>
+                    <ScrollContainer
+                        width="100%"
+                        height="100%"
+                        vertical="true"
+                        horizontal="false"
+                        class="diagramInputPanel">
+                        <layoutData>
+                            <l:SplitterLayoutData size="380px"/>
+                        </layoutData>
+                        
+                        <VBox class="sapUiSmallMargin">
+                            <!-- 用户输入区 -->
+                            <Panel headerText="{i18n>diagramInputTitle}" expandable="false">
+                                <VBox class="sapUiSmallMargin">
+                                    <TextArea
+                                        id="diagramInput"
+                                        value="{diagram>/inputValue}"
+                                        placeholder="{i18n>diagramInputPlaceholder}"
+                                        rows="5"
+                                        growing="true"
+                                        growingMaxLines="10"
+                                        width="100%"
+                                        enabled="{= !${diagram>/isLoading}}"/>
+                                    <HBox justifyContent="End" class="sapUiSmallMarginTop">
+                                        <Button
+                                            id="generateBtn"
+                                            text="{i18n>generateDiagram}"
+                                            icon="sap-icon://create"
+                                            type="Emphasized"
+                                            press="onGenerateDiagram"
+                                            enabled="{= !${diagram>/isLoading}}"
+                                            class="sapUiTinyMarginEnd"/>
+                                        <Button
+                                            text="{i18n>regenerateDiagram}"
+                                            icon="sap-icon://refresh"
+                                            press="onRegenerateDiagram"
+                                            enabled="{= !${diagram>/isLoading} &amp;&amp; ${diagram>/hasMermaid}}"
+                                            type="Transparent"/>
+                                    </HBox>
+                                </VBox>
+                            </Panel>
+                            
+                            <!-- Mermaid 源码区 -->
+                            <Panel headerText="{i18n>mermaidSourceTitle}" expandable="true" expanded="true" class="sapUiSmallMarginTop">
+                                <VBox class="sapUiSmallMargin">
+                                    <TextArea
+                                        id="mermaidSource"
+                                        value="{diagram>/mermaidCode}"
+                                        placeholder="{i18n>mermaidSourcePlaceholder}"
+                                        rows="12"
+                                        growing="true"
+                                        growingMaxLines="25"
+                                        width="100%"
+                                        liveChange="onMermaidCodeChange"/>
+                                    <HBox justifyContent="Start" class="sapUiSmallMarginTop">
+                                        <Button
+                                            text="{i18n>renderMermaid}"
+                                            icon="sap-icon://play"
+                                            press="onRenderMermaid"
+                                            enabled="{diagram>/hasMermaid}"
+                                            type="Accept"
+                                            class="sapUiTinyMarginEnd"/>
+                                        <Button
+                                            text="{i18n>copyMermaid}"
+                                            icon="sap-icon://copy"
+                                            press="onCopyMermaid"
+                                            enabled="{diagram>/hasMermaid}"
+                                            type="Transparent"/>
+                                    </HBox>
+                                </VBox>
+                            </Panel>
+                            
+                            <!-- AI 修复按钮（仅在格式错误时显示） -->
+                            <VBox visible="{diagram>/showFixButton}" class="sapUiSmallMarginTop">
+                                <MessageStrip
+                                    text="{diagram>/errorMessage}"
+                                    type="Error"
+                                    showIcon="true"
+                                    class="sapUiSmallMarginBottom"/>
+                                <Button
+                                    text="{i18n>fixOutputFormat}"
+                                    icon="sap-icon://sys-help"
+                                    press="onFixOutputFormat"
+                                    type="Attention"
+                                    enabled="{= !${diagram>/isLoading}}"/>
+                            </VBox>
+                        </VBox>
+                    </ScrollContainer>
+                </l:contentAreas>
+                
+                <!-- 右侧：预览区域 -->
+                <l:contentAreas>
+                    <VBox height="100%" class="diagramPreviewPanel">
+                        <layoutData>
+                            <l:SplitterLayoutData size="auto"/>
+                        </layoutData>
+                        
+                        <!-- 工具栏 -->
+                        <Toolbar class="diagramToolbar">
+                            <ToolbarSpacer/>
+                            <SegmentedButton id="viewModeBtn" selectedKey="{diagram>/viewMode}" selectionChange="onViewModeChange">
+                                <items>
+                                    <SegmentedButtonItem key="preview" text="{i18n>previewMode}" icon="sap-icon://show"/>
+                                    <SegmentedButtonItem key="code" text="{i18n>codeMode}" icon="sap-icon://source-code"/>
+                                </items>
+                            </SegmentedButton>
+                            <ToolbarSeparator/>
+                            <Button
+                                icon="sap-icon://download"
+                                text="{i18n>downloadPNG}"
+                                press="onDownloadPNG"
+                                enabled="{diagram>/hasMermaid}"
+                                type="Transparent"/>
+                            <Button
+                                icon="sap-icon://attachment-html"
+                                text="{i18n>downloadSVG}"
+                                press="onDownloadSVG"
+                                enabled="{diagram>/hasMermaid}"
+                                type="Transparent"/>
+                            <Button
+                                icon="sap-icon://copy"
+                                text="{i18n>copyImage}"
+                                press="onCopyImage"
+                                enabled="{diagram>/hasMermaid}"
+                                type="Transparent"/>
+                            <ToolbarSeparator/>
+                            <Button
+                                icon="sap-icon://edit"
+                                text="{i18n>openInDrawio}"
+                                press="onOpenInDrawio"
+                                enabled="{diagram>/hasMermaid}"
+                                type="Emphasized"/>
+                            <ToolbarSeparator/>
+                            <Button
+                                icon="sap-icon://zoom-in"
+                                press="onZoomIn"
+                                tooltip="{i18n>zoomIn}"
+                                type="Transparent"/>
+                            <Button
+                                icon="sap-icon://zoom-out"
+                                press="onZoomOut"
+                                tooltip="{i18n>zoomOut}"
+                                type="Transparent"/>
+                            <Button
+                                icon="sap-icon://reset"
+                                press="onResetZoom"
+                                tooltip="{i18n>resetZoom}"
+                                type="Transparent"/>
+                        </Toolbar>
+                        
+                        <!-- 预览容器 -->
+                        <VBox id="previewContainer" class="diagramPreviewContent">
+                            <layoutData>
+                                <FlexItemData growFactor="1"/>
+                            </layoutData>
+                        </VBox>
+                        
+                        <!-- 加载指示器 -->
+                        <VBox
+                            visible="{diagram>/isLoading}"
+                            alignItems="Center"
+                            justifyContent="Center"
+                            class="diagramLoadingOverlay">
+                            <BusyIndicator size="2rem"/>
+                            <Text text="{i18n>generatingDiagram}" class="sapUiSmallMarginTop"/>
+                        </VBox>
+                    </VBox>
+                </l:contentAreas>
+            </l:Splitter>
+        </content>
+    </Page>
+</mvc:View>
