@@ -139,11 +139,29 @@
                             </VBox>
                         </ScrollContainer>
                         
+                        <!-- 附件预览区域 - 位于输入框上方 -->
+                        <VBox id="attachmentPreviewArea" class="attachmentPreviewArea" visible="{= ${chat>/attachments}.length > 0}">
+                            <HBox id="attachmentList" class="attachmentList" wrap="Wrap">
+                                <!-- 附件卡片将通过JS动态添加 -->
+                            </HBox>
+                        </VBox>
+                        
                         <!-- 输入区域 - 固定在底部 -->
                         <HBox class="inputArea" width="100%" alignItems="End">
                             <layoutData>
                                 <FlexItemData growFactor="0" shrinkFactor="0"/>
                             </layoutData>
+                            <!-- 文件上传按钮 -->
+                            <Button
+                                id="uploadButton"
+                                icon="sap-icon://attachment"
+                                type="Transparent"
+                                press="onUploadFile"
+                                class="uploadButton"
+                                tooltip="{i18n>uploadFile}"
+                                enabled="{= !${chat>/isLoading}}"/>
+                            <!-- 隐藏的文件输入 -->
+                            <core:HTML id="fileInputContainer" content="&lt;input type='file' id='hiddenFileInput' style='display:none' accept='.pdf,.doc,.docx,.txt,.md,.json,.xml,.csv,.xlsx,.xls,.ppt,.pptx'/&gt;"/>
                             <TextArea
                                 id="messageInput"
                                 value="{chat>/inputValue}"

@@ -37,6 +37,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -292,10 +293,14 @@
 }
 
 @keyframes typing {
-    0%, 60%, 100% {
+
+    0%,
+    60%,
+    100% {
         transform: translateY(0);
         opacity: 0.5;
     }
+
     30% {
         transform: translateY(-4px);
         opacity: 1;
@@ -323,7 +328,7 @@
     height: 100%;
 }
 
-#chatPage > section {
+#chatPage>section {
     height: 100% !important;
     max-height: 100% !important;
     overflow: hidden !important;
@@ -340,7 +345,7 @@
 }
 
 /* ScrollContainer 内部样式修复 */
-.messageScrollContainer > div {
+.messageScrollContainer>div {
     height: 100%;
     overflow-y: auto;
 }
@@ -350,15 +355,15 @@
     .messageContent {
         max-width: 85%;
     }
-    
+
     .userMessage .messageContent {
         margin-left: 1rem;
     }
-    
+
     .aiMessage .messageContent {
         margin-right: 1rem;
     }
-    
+
     /* 移动端输入区域优化 - 防止键盘遮挡 */
     .inputArea {
         padding: 0.75rem 1rem;
@@ -366,7 +371,7 @@
         bottom: 0;
         z-index: 100;
     }
-    
+
     /* 移动端聊天容器使用相对定位 */
     .chatContainer {
         position: relative !important;
@@ -435,7 +440,7 @@
     color: #ffffff !important;
     font-size: 1rem !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .aiTile .sapMGTSubHdrTxt,
@@ -444,7 +449,7 @@
     color: #e8f4ff !important;
     font-size: 0.9rem !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
     opacity: 1 !important;
 }
 
@@ -469,7 +474,7 @@
     color: #ffffff !important;
     font-size: 1rem !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .toolTile .sapMGTSubHdrTxt,
@@ -478,7 +483,7 @@
     color: #e8fff0 !important;
     font-size: 0.9rem !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
     opacity: 1 !important;
 }
 
@@ -527,20 +532,20 @@
     .welcomeSection {
         padding: 2rem 0.5rem 1rem 0.5rem;
     }
-    
+
     .welcomeSection .sapMTitle {
         font-size: 1.5rem !important;
     }
-    
+
     .subtitleText {
         font-size: 0.95rem !important;
     }
-    
+
     .tileContainer {
         padding: 0.5rem 0;
         justify-content: center;
     }
-    
+
     .categoryTitle {
         font-size: 1.1rem !important;
     }
@@ -573,7 +578,7 @@
     color: #ffffff !important;
     font-size: 1rem !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .diagramTile .sapMGTSubHdrTxt,
@@ -582,7 +587,7 @@
     color: #ede9fe !important;
     font-size: 0.9rem !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
     opacity: 1 !important;
 }
 
@@ -604,7 +609,7 @@
     border-right: 1px solid #e0e0e0;
 }
 
-.diagramInputPanel > .sapUiVlt {
+.diagramInputPanel>.sapUiVlt {
     padding: 0 !important;
 }
 
@@ -639,9 +644,9 @@
     overflow: auto;
     background-color: #f8f9fa;
     /* 网格背景 */
-    background-image: 
-        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
     background-size: 20px 20px;
     cursor: grab;
     position: absolute;
@@ -939,9 +944,302 @@
     .mermaidContentWrapper {
         padding: 1rem;
     }
-    
+
     .mermaidRenderContainer {
         padding: 1rem;
     }
 }
 
+
+/* ==================== 文件上传相关样式 ==================== */
+
+/* 附件预览区域 */
+.attachmentPreviewArea {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e5e5e5;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+/* 附件列表 */
+.attachmentList {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* 文件卡片/胶囊 */
+.fileCard {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    padding: 0.375rem 0.75rem;
+    gap: 0.5rem;
+    min-width: 120px;
+    max-width: 280px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+    animation: fileCardAppear 0.3s ease;
+}
+
+@keyframes fileCardAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.fileCard:hover {
+    border-color: #0854a0;
+    box-shadow: 0 2px 6px rgba(8, 84, 160, 0.15);
+}
+
+/* 文件类型图标容器 */
+.fileIconContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* 不同文件类型的图标颜色 */
+.fileIconContainer.pdf {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.fileIconContainer.doc,
+.fileIconContainer.docx {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.fileIconContainer.xls,
+.fileIconContainer.xlsx {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.fileIconContainer.ppt,
+.fileIconContainer.pptx {
+    background-color: #fff3e0;
+    color: #e65100;
+}
+
+.fileIconContainer.txt,
+.fileIconContainer.md {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.fileIconContainer.json,
+.fileIconContainer.xml {
+    background-color: #e0f7fa;
+    color: #00838f;
+}
+
+.fileIconContainer.csv {
+    background-color: #f1f8e9;
+    color: #558b2f;
+}
+
+.fileIconContainer.default {
+    background-color: #f5f5f5;
+    color: #616161;
+}
+
+/* 文件图标 */
+.fileIcon {
+    font-size: 14px;
+}
+
+/* 文件信息区域 */
+.fileInfo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+/* 文件名 */
+.fileName {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+/* 文件状态 */
+.fileStatus {
+    font-size: 0.7rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.fileStatus.uploading {
+    color: #0854a0;
+}
+
+.fileStatus.processing {
+    color: #f0ab00;
+}
+
+.fileStatus.ready {
+    color: #107e3e;
+}
+
+.fileStatus.error {
+    color: #bb0000;
+}
+
+/* 进度条容器 */
+.progressBarContainer {
+    width: 100%;
+    height: 3px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 2px;
+}
+
+/* 进度条 */
+.progressBar {
+    height: 100%;
+    background: linear-gradient(90deg, #0854a0 0%, #0a6ed1 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.progressBar.complete {
+    background: linear-gradient(90deg, #107e3e 0%, #15a050 100%);
+}
+
+/* 进度条动画 - 处理中状态 */
+.progressBarContainer.indeterminate .progressBar {
+    width: 30% !important;
+    animation: indeterminateProgress 1.5s infinite ease-in-out;
+}
+
+@keyframes indeterminateProgress {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    50% {
+        transform: translateX(200%);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+/* 删除按钮 */
+.fileDeleteBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background-color: transparent;
+    color: #999;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.fileDeleteBtn:hover {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.fileDeleteBtn .deleteIcon {
+    font-size: 12px;
+}
+
+/* 上传按钮样式 */
+.uploadButton {
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    margin-right: 0.5rem;
+}
+
+.uploadButton:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.uploadButton .sapUiIcon {
+    font-size: 1.2rem;
+    color: #0854a0;
+}
+
+/* 上传按钮禁用状态 */
+.uploadButton[disabled] .sapUiIcon,
+.uploadButton.sapMBtnDisabled .sapUiIcon {
+    color: #ccc;
+}
+
+/* 文件数量徽章 */
+.fileCountBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background-color: #0854a0;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 9px;
+    padding: 0 4px;
+    margin-left: 4px;
+}
+
+/* 附件提示文本 */
+.attachmentHint {
+    font-size: 0.75rem;
+    color: #666;
+    padding: 0.25rem 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .attachmentPreviewArea {
+        padding: 0.5rem;
+    }
+
+    .fileCard {
+        max-width: 100%;
+        min-width: auto;
+        flex: 1 1 calc(50% - 0.5rem);
+    }
+
+    .fileName {
+        max-width: 120px;
+    }
+
+    .uploadButton {
+        width: 36px;
+        height: 36px;
+    }
+}

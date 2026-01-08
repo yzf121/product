@@ -9,7 +9,12 @@
     "@sap/cds": "^9",
     "@sap/xssec": "^4",
     "dotenv": "^16.3.1",
-    "express": "^4"
+    "express": "^4",
+    "multer": "^1.4.5-lts.1",
+    "form-data": "^4.0.0",
+    "@alicloud/bailian20231229": "^1.0.0",
+    "@alicloud/openapi-client": "^0.4.0",
+    "@alicloud/tea-util": "^1.4.0"
   },
   "devDependencies": {
     "@cap-js/sqlite": "^2.1.2",
