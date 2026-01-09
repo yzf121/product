@@ -333,10 +333,52 @@ sap.ui.define([
                 var reader = response.body.getReader();
                 var decoder = new TextDecoder();
                 var sFullContent = "";
+                var sBuffer = "";
+
+                function processLine(sLine) {
+                    if (!sLine || !sLine.startsWith("data:")) {
+                        return;
+                    }
+
+                    var sData = sLine.slice(5).trim();
+                    if (!sData || sData === "[DONE]") {
+                        return;
+                    }
+
+                    try {
+                        var oData = JSON.parse(sData);
+
+                        if (oData.error) {
+                            MessageToast.show(oData.error);
+                            return;
+                        }
+
+                        if (oData.text) {
+                            sFullContent += oData.text;
+                        }
+
+                        if (oData.sessionId) {
+                            oModel.setProperty("/sessionId", oData.sessionId);
+                        }
+                    } catch (e) {
+                        // ignore parse errors from partial frames
+                    }
+                }
+
+                function handleChunk(sChunk) {
+                    sBuffer += sChunk;
+                    var aLines = sBuffer.split(/\r?\n/);
+                    sBuffer = aLines.pop();
+                    aLines.forEach(processLine);
+                }
+
                 
                 function readStream() {
                     return reader.read().then(function (result) {
                         if (result.done) {
+                            if (sBuffer.trim()) {
+                                processLine(sBuffer);
+                            }
                             // 流结束，处理完整响应
                             that._processAIResponse(sFullContent, bIsFixRequest);
                             oModel.setProperty("/isLoading", false);
@@ -344,37 +386,8 @@ sap.ui.define([
                         }
                         
                         var sChunk = decoder.decode(result.value, { stream: true });
-                        var aLines = sChunk.split("\n");
-                        
-                        aLines.forEach(function (sLine) {
-                            if (sLine.startsWith("data: ")) {
-                                var sData = sLine.slice(6).trim();
-                                
-                                if (sData === "[DONE]") {
-                                    return;
-                                }
-                                
-                                try {
-                                    var oData = JSON.parse(sData);
-                                    
-                                    if (oData.error) {
-                                        MessageToast.show(oData.error);
-                                        return;
-                                    }
-                                    
-                                    if (oData.text) {
-                                        sFullContent += oData.text;
-                                    }
-                                    
-                                    if (oData.sessionId) {
-                                        oModel.setProperty("/sessionId", oData.sessionId);
-                                    }
-                                } catch (e) {
-                                    // 忽略解析错误
-                                }
-                            }
-                        });
-                        
+                        handleChunk(sChunk);
+
                         return readStream();
                     });
                 }
@@ -681,7 +694,7 @@ sap.ui.define([
                 return;
             }
             
-            navigator.clipboard.writeText(sMermaidCode).then(function () {
+            this._copyTextToClipboard(sMermaidCode).then(function () {
                 MessageToast.show(that._getI18nText("mermaidCopied"));
             }).catch(function () {
                 MessageToast.show(that._getI18nText("copyFailed"));
@@ -907,6 +920,34 @@ sap.ui.define([
             document.body.removeChild(oLink);
         },
 
+        _copyTextToClipboard: function (sText) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(sText);
+            }
+            return new Promise(function (resolve, reject) {
+                var oTextarea = document.createElement("textarea");
+                oTextarea.value = sText;
+                oTextarea.setAttribute("readonly", "");
+                oTextarea.style.position = "absolute";
+                oTextarea.style.left = "-9999px";
+                document.body.appendChild(oTextarea);
+                oTextarea.select();
+                try {
+                    var bSuccess = document.execCommand("copy");
+                    if (bSuccess) {
+                        resolve();
+                    } else {
+                        reject(new Error("copy failed"));
+                    }
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    document.body.removeChild(oTextarea);
+                }
+            });
+        },
+
+
         /**
          * 在 Draw.io 中打开编辑
          * 使用 embed.diagrams.net 嵌入模式，配置完整功能
@@ -922,7 +963,7 @@ sap.ui.define([
             }
             
             // 先复制 Mermaid 代码到剪贴板
-            navigator.clipboard.writeText(sMermaidCode).then(function() {
+            this._copyTextToClipboard(sMermaidCode).then(function() {
                 MessageToast.show("Mermaid 代码已复制，请在编辑器中 Arrange → Insert → Advanced → Mermaid 粘贴");
             }).catch(function() {
                 console.warn("[Diagram] 复制失败");

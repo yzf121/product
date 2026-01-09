@@ -41,6 +41,17 @@ sap.ui.define([
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("chat").attachPatternMatched(this._onRouteMatched, this);
         },
+        _syncWelcomeBoxAfterRender: function () {
+            var oModel = this.getView().getModel("chat");
+            var aMessages = oModel.getProperty("/messages") || [];
+            if (aMessages.length > 0) {
+                this._renderMessages();
+                this._hideWelcomeBox();
+            } else {
+                this._showWelcomeBox();
+            }
+        },
+
 
         /**
          * 视图渲染完成后调用
@@ -48,6 +59,8 @@ sap.ui.define([
         onAfterRendering: function () {
             this._bindKeyboardShortcut();
             this._bindFileInputChange();
+            this._renderAttachmentsFromModel();
+            this._syncWelcomeBoxAfterRender();
         },
 
         /**
@@ -129,6 +142,7 @@ sap.ui.define([
             // 清空当前对话ID和消息
             oModel.setProperty("/currentConversationId", null);
             oModel.setProperty("/messages", []);
+            this._setAttachmentsForConversation(null);
 
             // 清空消息容器并显示欢迎框
             this._clearMessageContainer();
@@ -243,6 +257,7 @@ sap.ui.define([
                 lastUpdate: this._formatDate(new Date()),
                 sessionId: null,
                 sessionInfo: null,  // 新对话时为null，首次收到sessionId时初始化
+                attachments: [],
                 aiType: sCurrentAiType  // 保存AI类型
             };
 
@@ -258,6 +273,7 @@ sap.ui.define([
 
             oModel.setProperty("/currentConversationId", oNewConversation.id);
             oModel.setProperty("/messages", []);
+            this._setAttachmentsForConversation(oNewConversation);
 
             // 清空消息容器并显示欢迎框
             this._clearMessageContainer();
@@ -299,6 +315,7 @@ sap.ui.define([
                     // 深拷贝消息数组避免引用问题
                     var aMessages = JSON.parse(JSON.stringify(oFullConversation.messages || []));
                     oModel.setProperty("/messages", aMessages);
+                    this._setAttachmentsForConversation(oFullConversation);
 
                     // 渲染消息
                     this._renderMessages();
@@ -416,6 +433,7 @@ sap.ui.define([
                             if (sCurrentId === oConversation.id) {
                                 oModel.setProperty("/currentConversationId", null);
                                 oModel.setProperty("/messages", []);
+                                that._setAttachmentsForConversation(null);
                                 that._clearMessageContainer();
                                 that._showWelcomeBox();
                             }
@@ -552,10 +570,61 @@ sap.ui.define([
                 var reader = response.body.getReader();
                 var decoder = new TextDecoder();
                 var sFullContent = "";
+                var sBuffer = "";
+
+                function processLine(sLine) {
+                    if (!sLine || !sLine.startsWith("data:")) {
+                        return;
+                    }
+
+                    var sData = sLine.slice(5).trim();
+                    if (!sData || sData === "[DONE]") {
+                        return;
+                    }
+
+                    try {
+                        var oData = JSON.parse(sData);
+
+                        if (oData.error) {
+                            MessageToast.show(oData.error);
+                            return;
+                        }
+
+                        if (oData.text) {
+                            sFullContent += oData.text;
+                            that._updateAIMessageContent(sMessageId, sFullContent);
+                            that._scrollToBottom();
+                        }
+
+                        if (oData.sessionId && oCurrentConv && !oCurrentConv._sessionIdSaved) {
+                            var iIndex = aConversations.findIndex(function (c) {
+                                return c.id === oCurrentConv.id;
+                            });
+                            if (iIndex >= 0) {
+                                aConversations[iIndex].sessionId = oData.sessionId;
+                                oCurrentConv._sessionIdSaved = true;
+                                oModel.setProperty("/conversations", aConversations);
+                            }
+                        }
+                    } catch (e) {
+                        // ignore parse errors from partial frames
+                    }
+                }
+
+                function handleChunk(sChunk) {
+                    sBuffer += sChunk;
+                    var aLines = sBuffer.split(/\r?\n/);
+                    sBuffer = aLines.pop();
+                    aLines.forEach(processLine);
+                }
+
 
                 function readStream() {
                     return reader.read().then(function (result) {
                         if (result.done) {
+                            if (sBuffer.trim()) {
+                                processLine(sBuffer);
+                            }
                             // 流结束，更新最终内容
                             that._finalizeAIMessage(sMessageId, sFullContent);
                             oModel.setProperty("/isLoading", false);
@@ -563,49 +632,7 @@ sap.ui.define([
                         }
 
                         var sChunk = decoder.decode(result.value, { stream: true });
-                        var aLines = sChunk.split("\n");
-
-                        aLines.forEach(function (sLine) {
-                            if (sLine.startsWith("data: ")) {
-                                var sData = sLine.slice(6).trim();
-
-                                if (sData === "[DONE]") {
-                                    return;
-                                }
-
-                                try {
-                                    var oData = JSON.parse(sData);
-
-                                    if (oData.error) {
-                                        MessageToast.show(oData.error);
-                                        return;
-                                    }
-
-                                    if (oData.text) {
-                                        // 累加增量内容（百炼API返回的是增量文本）
-                                        sFullContent += oData.text;
-                                        that._updateAIMessageContent(sMessageId, sFullContent);
-                                        that._scrollToBottom();
-                                    }
-
-                                    // 保存sessionId到对话中（只保存一次，不在这里更新roundCount）
-                                    // roundCount 在 _finalizeAIMessage 中更新，避免流式响应多次累加
-                                    if (oData.sessionId && oCurrentConv && !oCurrentConv._sessionIdSaved) {
-                                        var iIndex = aConversations.findIndex(function (c) {
-                                            return c.id === oCurrentConv.id;
-                                        });
-                                        if (iIndex >= 0) {
-                                            // 更新 sessionId
-                                            aConversations[iIndex].sessionId = oData.sessionId;
-                                            oCurrentConv._sessionIdSaved = true;  // 标记已保存，避免重复
-                                            oModel.setProperty("/conversations", aConversations);
-                                        }
-                                    }
-                                } catch (e) {
-                                    // 忽略解析错误
-                                }
-                            }
-                        });
+                        handleChunk(sChunk);
 
                         return readStream();
                     }).catch(function (streamError) {
@@ -698,6 +725,15 @@ sap.ui.define([
 
         // 更新AI消息内容（流式）
         _updateAIMessageContent: function (sMessageId, sContent) {
+            var oModel = this.getView().getModel("chat");
+            var aMessages = oModel.getProperty("/messages") || [];
+            var oMessage = aMessages.find(function (msg) {
+                return msg.id === sMessageId;
+            });
+            if (oMessage) {
+                oMessage.content = sContent;
+            }
+
             var oTextElement = document.getElementById("ai-text-" + sMessageId);
 
             if (oTextElement) {
@@ -806,7 +842,8 @@ sap.ui.define([
                     breaks: true,
                     gfm: true
                 });
-                return marked.parse(sContent);
+                var sSafeContent = this._escapeHtml(sContent);
+                return marked.parse(sSafeContent);
             }
             return this._escapeHtml(sContent);
         },
@@ -821,6 +858,34 @@ sap.ui.define([
             }
         },
 
+        _copyTextToClipboard: function (sText) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(sText);
+            }
+            return new Promise(function (resolve, reject) {
+                var oTextarea = document.createElement("textarea");
+                oTextarea.value = sText;
+                oTextarea.setAttribute("readonly", "");
+                oTextarea.style.position = "absolute";
+                oTextarea.style.left = "-9999px";
+                document.body.appendChild(oTextarea);
+                oTextarea.select();
+                try {
+                    var bSuccess = document.execCommand("copy");
+                    if (bSuccess) {
+                        resolve();
+                    } else {
+                        reject(new Error("copy failed"));
+                    }
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    document.body.removeChild(oTextarea);
+                }
+            });
+        },
+
+
         // 添加复制按钮到代码块
         _addCopyButtons: function (oElement) {
             var that = this;
@@ -828,6 +893,7 @@ sap.ui.define([
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             var sCopyText = oI18n.getText("copy");
             var sCopiedText = oI18n.getText("copied");
+            var sCopyFailedText = oI18n.getText("copyFailed");
 
             aPreBlocks.forEach(function (pre) {
                 // 检查是否已有复制按钮
@@ -842,12 +908,14 @@ sap.ui.define([
                 oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
                 oCopyBtn.onclick = function () {
                     var sCode = pre.querySelector("code") ? pre.querySelector("code").textContent : pre.textContent;
-                    navigator.clipboard.writeText(sCode).then(function () {
+                    that._copyTextToClipboard(sCode).then(function () {
                         // SAP-icons: &#xe05b; = accept (勾选图标，表示复制成功)
                         oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe05b;</span> ' + sCopiedText;
                         setTimeout(function () {
                             oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
                         }, 2000);
+                    }).catch(function () {
+                        MessageToast.show(sCopyFailedText);
                     });
                 };
 
@@ -1106,6 +1174,59 @@ sap.ui.define([
             }
         },
 
+        _setAttachmentsForConversation: function (oConversation) {
+            var oModel = this.getView().getModel("chat");
+            if (oConversation && !Array.isArray(oConversation.attachments)) {
+                oConversation.attachments = [];
+            }
+            var aAttachments = oConversation ? oConversation.attachments : [];
+
+            oModel.setProperty("/attachments", aAttachments);
+            this._renderAttachmentsFromModel();
+        },
+
+        _renderAttachmentsFromModel: function () {
+            var oModel = this.getView().getModel("chat");
+            var aAttachments = oModel.getProperty("/attachments") || [];
+
+            this._clearAttachmentDom();
+            aAttachments.forEach(function (oAttachment) {
+                this._renderAttachmentCard(oAttachment);
+            }.bind(this));
+
+            this._updateAttachmentAreaVisibility();
+        },
+
+        _clearAttachmentDom: function () {
+            var oAttachmentList = this.byId("attachmentList");
+            if (oAttachmentList) {
+                var oDomRef = oAttachmentList.getDomRef();
+                if (oDomRef) {
+                    oDomRef.innerHTML = "";
+                }
+            }
+        },
+
+        _updateCurrentConversationAttachments: function (aAttachments) {
+            var oModel = this.getView().getModel("chat");
+            var sCurrentId = oModel.getProperty("/currentConversationId");
+            if (!sCurrentId) {
+                return;
+            }
+
+            var aConversations = oModel.getProperty("/conversations") || [];
+            var iIndex = aConversations.findIndex(function (conv) {
+                return conv.id === sCurrentId;
+            });
+
+            if (iIndex >= 0) {
+                aConversations[iIndex].attachments = aAttachments;
+                oModel.setProperty("/conversations", aConversations);
+                this._syncToAllConversations(aConversations);
+            }
+        },
+
+
         // ==================== 文件上传相关函数 ====================
 
         /**
@@ -1195,6 +1316,7 @@ sap.ui.define([
             var aAttachments = oModel.getProperty("/attachments") || [];
             aAttachments.push(oAttachment);
             oModel.setProperty("/attachments", aAttachments);
+            this._updateCurrentConversationAttachments(aAttachments);
 
             // 渲染附件卡片
             this._renderAttachmentCard(oAttachment);
@@ -1369,6 +1491,8 @@ sap.ui.define([
 
             var oIconInfo = this._getFileTypeIcon(oAttachment.fileExt);
             var sProgressClass = oAttachment.status === 'ready' ? 'complete' : '';
+            var sSafeFileName = this._escapeHtml(oAttachment.fileName || "");
+            var sSafeMessage = this._escapeHtml(oAttachment.message || "");
             var sIndeterminate = oAttachment.status === 'processing' ? 'indeterminate' : '';
 
             var sHtml = '<div class="fileCard" id="file-card-' + oAttachment.id + '">' +
@@ -1376,9 +1500,9 @@ sap.ui.define([
                 '<span class="sapUiIcon fileIcon" style="font-family: SAP-icons">' + oIconInfo.icon + '</span>' +
                 '</div>' +
                 '<div class="fileInfo">' +
-                '<span class="fileName" title="' + oAttachment.fileName + '">' + oAttachment.fileName + '</span>' +
+                '<span class="fileName" title="' + sSafeFileName + '">' + sSafeFileName + '</span>' +
                 '<span class="fileStatus ' + oAttachment.status + '" id="file-status-' + oAttachment.id + '">' +
-                oAttachment.message +
+                sSafeMessage +
                 '</span>' +
                 '<div class="progressBarContainer ' + sIndeterminate + '" id="file-progress-container-' + oAttachment.id + '">' +
                 '<div class="progressBar ' + sProgressClass + '" id="file-progress-' + oAttachment.id + '" style="width: ' + oAttachment.progress + '%"></div>' +
@@ -1448,6 +1572,7 @@ sap.ui.define([
             if (iIndex >= 0) {
                 Object.assign(aAttachments[iIndex], oUpdates);
                 oModel.setProperty("/attachments", aAttachments);
+                this._updateCurrentConversationAttachments(aAttachments);
             }
         },
 
@@ -1463,6 +1588,7 @@ sap.ui.define([
                 return a.id !== sAttachmentId;
             });
             oModel.setProperty("/attachments", aAttachments);
+            this._updateCurrentConversationAttachments(aAttachments);
 
             // 从DOM中移除
             var oCardEl = document.getElementById("file-card-" + sAttachmentId);
@@ -1530,16 +1656,10 @@ sap.ui.define([
         _clearAttachments: function () {
             var oModel = this.getView().getModel("chat");
             oModel.setProperty("/attachments", []);
+            this._updateCurrentConversationAttachments([]);
 
             // 清空DOM
-            var oAttachmentList = this.byId("attachmentList");
-            if (oAttachmentList) {
-                var oDomRef = oAttachmentList.getDomRef();
-                if (oDomRef) {
-                    oDomRef.innerHTML = "";
-                }
-            }
-
+            this._clearAttachmentDom();
             this._updateAttachmentAreaVisibility();
         }
     });

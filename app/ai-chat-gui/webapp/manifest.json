@@ -64,14 +64,15 @@
             "chat": {
                 "type": "sap.ui.model.json.JSONModel",
                 "settings": {
-                    "data": {
-                        "messages": [],
-                        "conversations": [],
-                        "currentConversationId": null,
-                        "inputValue": "",
-                        "isLoading": false,
-                        "sidebarExpanded": true
-                    }
+                "data": {
+                    "messages": [],
+                    "conversations": [],
+                    "currentConversationId": null,
+                    "attachments": [],
+                    "inputValue": "",
+                    "isLoading": false,
+                    "sidebarExpanded": true
+                }
                 }
             }
         },

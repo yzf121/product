@@ -42,6 +42,9 @@ sap.ui.define([
                             if (!conv.aiType) {
                                 conv.aiType = "abap-clean-core";  // 默认AI类型
                             }
+                            if (!Array.isArray(conv.attachments)) {
+                                conv.attachments = [];
+                            }
                             return conv;
                         });
                         // 保存到全局对话列表
@@ -58,6 +61,23 @@ sap.ui.define([
             }
         },
 
+        _sanitizeConversationsForStorage: function (aConversations) {
+            return (aConversations || []).map(function (conv) {
+                var oCopy = Object.assign({}, conv);
+                if (Array.isArray(conv.attachments)) {
+                    oCopy.attachments = conv.attachments.map(function (att) {
+                        var oAtt = Object.assign({}, att);
+                        if (oAtt.file) {
+                            delete oAtt.file;
+                        }
+                        return oAtt;
+                    });
+                }
+                return oCopy;
+            });
+        },
+
+
         // 保存对话到localStorage
         saveConversationsToStorage: function () {
             var aAllConversations = this._aAllConversations || [];
@@ -69,7 +89,8 @@ sap.ui.define([
                     this._aAllConversations = aAllConversations;
                 }
                 
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(aAllConversations));
+                var aStoredConversations = this._sanitizeConversationsForStorage(aAllConversations);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(aStoredConversations));
             } catch (e) {
                 // 检查是否为存储空间不足
                 if (e.name === 'QuotaExceededError' || e.code === 22) {
@@ -79,7 +100,8 @@ sap.ui.define([
                         this._aAllConversations = aAllConversations;
                         
                         try {
-                            localStorage.setItem(STORAGE_KEY, JSON.stringify(aAllConversations));
+                            var aStoredConversations = this._sanitizeConversationsForStorage(aAllConversations);
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(aStoredConversations));
                             MessageToast.show("存储空间不足，已自动清理部分历史对话");
                         } catch (retryError) {
                             MessageToast.show("存储空间不足，无法保存对话历史");

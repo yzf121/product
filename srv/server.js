@@ -673,10 +673,16 @@ cds.on('listening', ({ server, url }) => {
 // 自定义端口绑定
 const originalServer = cds.server;
 module.exports = async function (options) {
-    const defaultPort = process.env.PORT || 4004;
+    const envPort = process.env.PORT;
+    const parsedPort = envPort ? parseInt(envPort, 10) : NaN;
+    const defaultPort = Number.isInteger(parsedPort) ? parsedPort : 4004;
+
+    if (Number.isInteger(parsedPort)) {
+        return originalServer.call(cds, options);
+    }
 
     try {
-        const availablePort = await findAvailablePort(parseInt(defaultPort));
+        const availablePort = await findAvailablePort(defaultPort);
         process.env.PORT = availablePort;
         return originalServer.call(cds, options);
     } catch (error) {

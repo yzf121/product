@@ -19,7 +19,7 @@ modules:
     memory: 256M
     random-route: true
   build-parameters:
-    builder: npm-ci
+    builder: npm
 
 # HTML5 应用部署器
 - name: abap-clean-core-ai-fiori-new-app-deployer
