@@ -104,7 +104,8 @@
                                 icon="sap-icon://add"
                                 text="{i18n>newConversation}"
                                 press="onNewConversation"
-                                type="Transparent"/>
+                                type="Transparent"
+                                class="newChatBtn"/>
                         </contentRight>
                     </Bar>
                 </customHeader>
