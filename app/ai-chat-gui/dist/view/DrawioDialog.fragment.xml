@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+    
+    <Dialog
+        id="drawioDialog"
+        contentWidth="98%"
+        contentHeight="95%"
+        stretch="true"
+        draggable="false"
+        resizable="false"
+        verticalScrolling="false"
+        horizontalScrolling="false"
+        class="drawioDialogCompact">
+        <customHeader>
+            <Bar class="drawioCompactHeader">
+                <contentLeft>
+                    <Text text="💡 Mermaid导入: Arrange→Insert→Advanced→Mermaid | 布局: Arrange→Layout | 线条: Edit→Select Edges" class="drawioCompactTip"/>
+                </contentLeft>
+                <contentRight>
+                    <Button icon="sap-icon://download" tooltip="导出 PNG" press="onDrawioExportPNG" type="Transparent"/>
+                    <Button icon="sap-icon://attachment-html" tooltip="导出 SVG" press="onDrawioExportSVG" type="Transparent"/>
+                    <Button icon="sap-icon://copy" tooltip="复制图片" press="onDrawioCopyImage" type="Transparent"/>
+                    <Button icon="sap-icon://decline" tooltip="关闭" press="onCloseDrawio" type="Reject"/>
+                </contentRight>
+            </Bar>
+        </customHeader>
+        <content>
+            <VBox id="drawioIframeBox" height="100%" width="100%"/>
+        </content>
+    </Dialog>
+</core:FragmentDefinition>

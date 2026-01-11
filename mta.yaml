@@ -12,7 +12,7 @@ modules:
   provides:
   - name: srv-api
     properties:
-      srv-url: http://${routes/0/route}
+      srv-url: https://${routes/0/route}
   parameters:
     buildpack: nodejs_buildpack
     instances: 1

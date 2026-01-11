@@ -4,14 +4,28 @@ specVersion: "4.0"
 metadata:
   name: com.ai.assistant.aichatapp
 type: application
+
 resources:
   configuration:
     propertiesFileSourceEncoding: UTF-8
+
 builder:
   resources:
     excludes:
       - /test/**
       - /localService/**
+      # 关键：排除这个库，避免 specVersion 4.0+ 的 top-level-scope/eval 限制
+      - /webapp/lib/highlight.min.js
+      # 保险：如果构建输出路径按命名空间引用，也一并排除
+      - /com/ai/assistant/aichatapp/lib/highlight.min.js
+
+  # ✅ 关键：专门从 Component-preload 打包中排除，否则 generateComponentPreload 仍会报错
+  componentPreload:
+    excludes:
+      - "com/ai/assistant/aichatapp/lib/highlight.min.js"
+      # 兜底：无论路径如何变化，都排除该文件
+      - "**/highlight.min.js"
+
   customTasks:
     - name: ui5-task-zipper
       afterTask: generateCachebusterInfo

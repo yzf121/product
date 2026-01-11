@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mvc:View
+    controllerName="com.ai.assistant.aichatapp.controller.Home"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout"
+    height="100%">
+    
+    <Page
+        id="homePage"
+        showHeader="true"
+        backgroundDesign="Solid"
+        class="sapUiContentPadding homePageBackground">
+        <customHeader>
+            <Bar>
+                <contentLeft>
+                    <Image src="images/accenture-logo.png" height="1.5rem" class="sapUiSmallMarginBegin accentureLogo"/>
+                    <Title text="{i18n>launchpadTitle}" class="sapUiSmallMarginBegin"/>
+                </contentLeft>
+                <contentRight>
+                    <Button
+                        icon="sap-icon://action-settings"
+                        type="Transparent"
+                        tooltip="{i18n>settings}"
+                        press="onSettingsPress"/>
+                </contentRight>
+            </Bar>
+        </customHeader>
+        
+        <content>
+            <!-- 欢迎区域 -->
+            <VBox class="sapUiMediumMargin welcomeSection" alignItems="Center">
+                <Title text="{i18n>welcomeHomeTitle}" level="H1" class="sapUiSmallMarginBottom"/>
+                <Text text="{i18n>welcomeHomeSubtitle}" class="subtitleText"/>
+            </VBox>
+            
+            <!-- AI助手分类区域 -->
+            <VBox class="sapUiMediumMargin">
+                <Title text="{i18n>aiAssistantsCategory}" level="H2" class="sapUiMediumMarginBottom categoryTitle"/>
+                
+                <HBox wrap="Wrap" class="tileContainer">
+                    <!-- ABAP Clean Core AI -->
+                    <GenericTile
+                        header="{i18n>abapCleanCoreTitle}"
+                        subheader="{i18n>abapCleanCoreDesc}"
+                        press="onTilePress"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom aiTile">
+                        <TileContent>
+                            <ImageContent src="sap-icon://syntax"/>
+                        </TileContent>
+                        <customData>
+                            <core:CustomData key="aiType" value="abap-clean-core"/>
+                        </customData>
+                    </GenericTile>
+                    
+                    <!-- CPI AI -->
+                    <GenericTile
+                        header="{i18n>cpiAiTitle}"
+                        subheader="{i18n>cpiAiDesc}"
+                        press="onTilePress"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom aiTile">
+                        <TileContent>
+                            <ImageContent src="sap-icon://connected"/>
+                        </TileContent>
+                        <customData>
+                            <core:CustomData key="aiType" value="cpi"/>
+                        </customData>
+                    </GenericTile>
+                    
+                    <!-- Function Doc AI -->
+                    <GenericTile
+                        header="{i18n>funcDocAiTitle}"
+                        subheader="{i18n>funcDocAiDesc}"
+                        press="onTilePress"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom aiTile">
+                        <TileContent>
+                            <ImageContent src="sap-icon://document-text"/>
+                        </TileContent>
+                        <customData>
+                            <core:CustomData key="aiType" value="func-doc"/>
+                        </customData>
+                    </GenericTile>
+                    
+                    <!-- Tech Doc AI -->
+                    <GenericTile
+                        header="{i18n>techDocAiTitle}"
+                        subheader="{i18n>techDocAiDesc}"
+                        press="onTilePress"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom aiTile">
+                        <TileContent>
+                            <ImageContent src="sap-icon://technical-object"/>
+                        </TileContent>
+                        <customData>
+                            <core:CustomData key="aiType" value="tech-doc"/>
+                        </customData>
+                    </GenericTile>
+                </HBox>
+            </VBox>
+            
+            <!-- 工具分类区域 -->
+            <VBox class="sapUiMediumMargin">
+                <Title text="{i18n>toolsCategory}" level="H2" class="sapUiMediumMarginBottom categoryTitle"/>
+                
+                <HBox wrap="Wrap" class="tileContainer">
+                    <!-- Diagram Helper - 流程图生成 -->
+                    <GenericTile
+                        header="{i18n>diagramHelperTitle}"
+                        subheader="{i18n>diagramHelperDesc}"
+                        press="onDiagramTilePress"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom diagramTile">
+                        <TileContent>
+                            <ImageContent src="sap-icon://workflow-tasks"/>
+                        </TileContent>
+                    </GenericTile>
+                    
+                    <!-- 代码审查 -->
+                    <GenericTile
+                        header="{i18n>codeReviewTitle}"
+                        subheader="{i18n>codeReviewDesc}"
+                        press="onTilePress"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom toolTile">
+                        <TileContent>
+                            <ImageContent src="sap-icon://inspect"/>
+                        </TileContent>
+                        <customData>
+                            <core:CustomData key="aiType" value="code-review"/>
+                        </customData>
+                    </GenericTile>
+                    
+                    <!-- 单元测试生成 -->
+                    <GenericTile
+                        header="{i18n>unitTestTitle}"
+                        subheader="{i18n>unitTestDesc}"
+                        press="onTilePress"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom toolTile">
+                        <TileContent>
+                            <ImageContent src="sap-icon://checklist-item"/>
+                        </TileContent>
+                        <customData>
+                            <core:CustomData key="aiType" value="unit-test"/>
+                        </customData>
+                    </GenericTile>
+                </HBox>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

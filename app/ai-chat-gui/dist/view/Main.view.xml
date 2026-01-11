@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mvc:View
+    controllerName="com.ai.assistant.aichatapp.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout"
+    height="100%">
+    
+    <f:FlexibleColumnLayout
+        id="flexibleColumnLayout"
+        layout="TwoColumnsMidExpanded"
+        backgroundDesign="Solid">
+        
+        <f:beginColumnPages>
+            <!-- 侧边栏 -->
+            <Page
+                id="sidebarPage"
+                showHeader="true"
+                backgroundDesign="Solid">
+                <customHeader>
+                    <Bar>
+                        <contentLeft>
+                            <Title text="{i18n>sidebarTitle}" class="sapUiSmallMarginBegin"/>
+                        </contentLeft>
+                        <contentRight>
+                            <Button
+                                icon="sap-icon://add"
+                                tooltip="{i18n>newConversation}"
+                                press="onNewConversation"
+                                type="Transparent"/>
+                        </contentRight>
+                    </Bar>
+                </customHeader>
+                <content>
+                    <List
+                        id="conversationList"
+                        items="{chat>/conversations}"
+                        mode="SingleSelectMaster"
+                        selectionChange="onConversationSelect"
+                        noDataText="{i18n>noConversations}">
+                        <CustomListItem
+                            type="Active"
+                            press="onConversationSelect">
+                            <HBox
+                                alignItems="Center"
+                                justifyContent="SpaceBetween"
+                                width="100%"
+                                class="sapUiTinyMargin">
+                                <VBox width="80%">
+                                    <Text
+                                        text="{chat>title}"
+                                        maxLines="1"
+                                        class="conversationTitle"/>
+                                    <Text
+                                        text="{chat>lastUpdate}"
+                                        class="conversationDate sapUiTinyMarginTop"/>
+                                </VBox>
+                                <HBox>
+                                    <Button
+                                        icon="sap-icon://edit"
+                                        type="Transparent"
+                                        press="onEditConversationTitle"
+                                        tooltip="{i18n>editTitle}"/>
+                                    <Button
+                                        icon="sap-icon://delete"
+                                        type="Transparent"
+                                        press="onDeleteConversation"
+                                        tooltip="{i18n>deleteConversation}"/>
+                                </HBox>
+                            </HBox>
+                        </CustomListItem>
+                    </List>
+                </content>
+            </Page>
+        </f:beginColumnPages>
+        
+        <f:midColumnPages>
+            <!-- 主聊天区域 -->
+            <Page
+                id="chatPage"
+                showHeader="true"
+                backgroundDesign="Solid"
+                enableScrolling="false">
+                <customHeader>
+                    <Bar>
+                        <contentLeft>
+                            <Button
+                                icon="sap-icon://nav-back"
+                                press="onNavBack"
+                                type="Transparent"
+                                tooltip="{i18n>backToHome}"/>
+                            <Button
+                                id="toggleSidebarBtn"
+                                icon="sap-icon://menu2"
+                                press="onToggleSidebar"
+                                type="Transparent"
+                                tooltip="{i18n>sidebarTitle}"/>
+                            <Title id="chatPageTitle" text="{i18n>appTitle}" class="sapUiSmallMarginBegin"/>
+                        </contentLeft>
+                        <contentRight>
+                            <Button
+                                icon="sap-icon://add"
+                                text="{i18n>newConversation}"
+                                press="onNewConversation"
+                                type="Transparent"
+                                class="newChatBtn"/>
+                        </contentRight>
+                    </Bar>
+                </customHeader>
+                <content>
+                    <VBox class="chatContainer" renderType="Bare">
+                        <!-- 消息列表区域 -->
+                        <ScrollContainer
+                            id="messageScrollContainer"
+                            width="100%"
+                            vertical="true"
+                            horizontal="false"
+                            class="messageScrollContainer">
+                            <layoutData>
+                                <FlexItemData growFactor="1" shrinkFactor="1"/>
+                            </layoutData>
+                            <VBox
+                                id="messageList"
+                                class="messageList">
+                            </VBox>
+                            <!-- 欢迎信息 -->
+                            <VBox
+                                id="welcomeBox"
+                                alignItems="Center"
+                                justifyContent="Center"
+                                class="welcomeBox">
+                                <Image
+                                    src="images/accenture-big-logo.png"
+                                    height="12rem"
+                                    class="sapUiMediumMarginBottom welcomeLogo"/>
+                                <Title text="{i18n>welcomeTitle}" level="H2"/>
+                                <Text text="{i18n>welcomeMessage}" class="sapUiSmallMarginTop"/>
+                            </VBox>
+                        </ScrollContainer>
+                        
+                        <!-- 附件预览区域 - 位于输入框上方 -->
+                        <VBox id="attachmentPreviewArea" class="attachmentPreviewArea" visible="{= ${chat>/attachments}.length > 0}">
+                            <HBox id="attachmentList" class="attachmentList" wrap="Wrap">
+                                <!-- 附件卡片将通过JS动态添加 -->
+                            </HBox>
+                        </VBox>
+                        
+                        <!-- 输入区域 - 固定在底部 -->
+                        <HBox class="inputArea" width="100%" alignItems="End">
+                            <layoutData>
+                                <FlexItemData growFactor="0" shrinkFactor="0"/>
+                            </layoutData>
+                            <!-- 文件上传按钮 -->
+                            <Button
+                                id="uploadButton"
+                                icon="sap-icon://attachment"
+                                type="Transparent"
+                                press="onUploadFile"
+                                class="uploadButton"
+                                tooltip="{i18n>uploadFile}"
+                                enabled="{= !${chat>/isLoading}}"/>
+                            <!-- 隐藏的文件输入 -->
+                            <core:HTML id="fileInputContainer" content="&lt;input type='file' id='hiddenFileInput' style='display:none' accept='.pdf,.doc,.docx,.txt,.md,.json,.xml,.csv,.xlsx,.xls,.ppt,.pptx'/&gt;"/>
+                            <TextArea
+                                id="messageInput"
+                                value="{chat>/inputValue}"
+                                placeholder="{i18n>inputPlaceholder}"
+                                maxLength="4000"
+                                rows="2"
+                                growing="true"
+                                growingMaxLines="6"
+                                class="messageInput"
+                                enabled="{= !${chat>/isLoading}}">
+                                <layoutData>
+                                    <FlexItemData growFactor="1"/>
+                                </layoutData>
+                            </TextArea>
+                            <Button
+                                id="sendButton"
+                                icon="sap-icon://paper-plane"
+                                type="Emphasized"
+                                press="onSendMessage"
+                                class="sendButton"
+                                enabled="{= !${chat>/isLoading}}"
+                                tooltip="{i18n>sendTooltip}"/>
+                        </HBox>
+                    </VBox>
+                </content>
+            </Page>
+        </f:midColumnPages>
+    </f:FlexibleColumnLayout>
+</mvc:View>

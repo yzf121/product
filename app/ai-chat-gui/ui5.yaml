@@ -4,6 +4,7 @@ specVersion: "4.0"
 metadata:
   name: com.ai.assistant.aichatapp
 type: application
+
 server:
   customMiddleware:
     - name: fiori-tools-proxy
@@ -18,14 +19,29 @@ server:
         backend:
           - path: /api
             url: http://localhost:4004
+
     - name: fiori-tools-appreload
       afterMiddleware: compression
       configuration:
         port: 35729
         path: webapp
         delay: 300
+
     - name: fiori-tools-preview
       afterMiddleware: fiori-tools-appreload
       configuration:
         flp:
           theme: sap_horizon
+
+builder:
+  resources:
+    excludes:
+      # 方案：把高亮库从资源处理里排除（避免被打进 preload/bundle）
+      - "webapp/lib/highlight.min.js"
+      - "com/ai/assistant/aichatapp/lib/highlight.min.js"
+
+  # ✅ 同步排除 Component-preload（即使某些场景走 ui5.yaml 构建，也不踩坑）
+  componentPreload:
+    excludes:
+      - "com/ai/assistant/aichatapp/lib/highlight.min.js"
+      - "**/highlight.min.js"
