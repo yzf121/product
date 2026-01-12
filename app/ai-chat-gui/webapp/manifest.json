@@ -6,7 +6,7 @@
         "title": "{{appTitle}}",
         "description": "{{appDescription}}",
         "applicationVersion": {
-            "version": "1.0.0"
+            "version": "1.4.3"
         },
         "i18n": "i18n/i18n.properties",
         "dataSources": {},
@@ -57,22 +57,26 @@
                 "type": "sap.ui.model.resource.ResourceModel",
                 "settings": {
                     "bundleName": "com.ai.assistant.aichatapp.i18n.i18n",
-                    "supportedLocales": ["", "en", "zh_CN"],
+                    "supportedLocales": [
+                        "",
+                        "en",
+                        "zh_CN"
+                    ],
                     "fallbackLocale": ""
                 }
             },
             "chat": {
                 "type": "sap.ui.model.json.JSONModel",
                 "settings": {
-                "data": {
-                    "messages": [],
-                    "conversations": [],
-                    "currentConversationId": null,
-                    "attachments": [],
-                    "inputValue": "",
-                    "isLoading": false,
-                    "sidebarExpanded": true
-                }
+                    "data": {
+                        "messages": [],
+                        "conversations": [],
+                        "currentConversationId": null,
+                        "attachments": [],
+                        "inputValue": "",
+                        "isLoading": false,
+                        "sidebarExpanded": true
+                    }
                 }
             }
         },

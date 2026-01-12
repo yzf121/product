@@ -216,6 +216,8 @@ data: {"error": "消息内容不能为空"}
 | `unit-test` | 单元测试生成助手 | `DASHSCOPE_APP_ID_UNIT_TEST` |
 | `diagram` | 流程图生成助手 | `DASHSCOPE_APP_ID_DIAGRAM` |
 
+> **注**: 文件上传分析功能通过 `sessionFileIds` 参数支持，可与上述任意 `aiType` 配合使用（RAG 模式），无需特定的 `aiType`。
+
 ---
 
 ## 2. 文件上传接口
