@@ -35,8 +35,9 @@ npm install
 ### 2. 配置环境变量
 
 ```bash
-# 复制环境变量模板
-cp .env.example .env
+# 新建 .env 文件（参考下方示例）
+# Windows: type nul > .env
+# macOS/Linux: touch .env
 
 # 编辑 .env 文件，填写 API 密钥
 ```
@@ -107,7 +108,7 @@ npm run dev
 | `npm run build` | 构建 MTA 包 |
 | `npm run deploy` | 部署到 Cloud Foundry |
 | `npm run undeploy` | 从 Cloud Foundry 卸载 |
-| `npm run watch-ai-chat-gui` | 独立开发前端 |
+| `npm run watch-ai-chat-gui` | 启动 cds watch（禁用 livereload，仍会启动后端） |
 
 ---
 

@@ -7,12 +7,12 @@
 |**Generation Platform**<br>SAP Business Application Studio|
 |**Template Used**<br>Basic V4|
 |**Service Type**<br>Local CAP|
-|**Service URL**<br>http://localhost:4004/odata/v4/catalog/|
+|**Service URL**<br>http://localhost:4004/api/chat<br>http://localhost:4004/api/chat/stream|
 |**Module Name**<br>ai-chat-gui|
-|**Application Title**<br>AI Assistant Hub|
+|**Application Title**<br>ABAP CLEAN CORE HELPER|
 |**Namespace**<br>com.ai.assistant|
 |**UI5 Theme**<br>sap_horizon|
-|**UI5 Version**<br>1.143.0|
+|**UI5 Version**<br>>=1.120.0|
 |**Enable Code Assist Libraries**<br>False|
 |**Enable TypeScript**<br>False|
 |**Add Eslint configuration**<br>False|
@@ -30,5 +30,4 @@ http://localhost:4004/ai-chat-gui/webapp/index.html
 #### Pre-requisites:
 
 1. Active NodeJS LTS (Long Term Support) version and associated supported NPM version.  (See https://nodejs.org)
-
 

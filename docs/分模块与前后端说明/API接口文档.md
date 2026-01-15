@@ -39,12 +39,12 @@ interface ChatStreamRequest {
     message: string;
     
     /**
-     * AI 助手类型
-     * @required
-     * @enum abap-clean-core, cpi, func-doc, tech-doc, 
+     * AI 助手类型（可选，未传时默认使用 abap-clean-core）
+     * @optional
+     * @enum abap-clean-core, cpi, func-doc, tech-doc,
      *       code-review, unit-test, diagram
      */
-    aiType: string;
+    aiType?: string;
     
     /**
      * 百炼 session_id
@@ -161,13 +161,10 @@ Content-Type: application/json
 SSE (Server-Sent Events) 格式：
 
 ```
-event: message
 data: {"text": "我来帮你分析", "sessionId": "session_abc123"}
 
-event: message
 data: {"text": "这段代码", "sessionId": "session_abc123"}
 
-event: message
 data: {"text": "首先，", "sessionId": "session_abc123"}
 
 data: [DONE]
@@ -216,6 +213,7 @@ data: {"error": "消息内容不能为空"}
 | `unit-test` | 单元测试生成助手 | `DASHSCOPE_APP_ID_UNIT_TEST` |
 | `diagram` | 流程图生成助手 | `DASHSCOPE_APP_ID_DIAGRAM` |
 
+> **默认值**: 未传 `aiType` 时默认使用 `abap-clean-core`。
 > **注**: 文件上传分析功能通过 `sessionFileIds` 参数支持，可与上述任意 `aiType` 配合使用（RAG 模式），无需特定的 `aiType`。
 
 ---
@@ -480,11 +478,13 @@ Content-Type: application/json
 
 ## 5. CORS 配置
 
-所有 API 端点均支持 CORS：
+当前仅对以下端点显式处理预检：
+- `/api/chat/stream`: `POST, OPTIONS`
+- `/api/files/*`: `GET, POST, OPTIONS`
 
 ```
 Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: GET, POST, OPTIONS
+Access-Control-Allow-Methods: <按端点>
 Access-Control-Allow-Headers: Content-Type
 ```
 
