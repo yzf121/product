@@ -203,17 +203,18 @@ data: {"error": "消息内容不能为空"}
 
 ### aiType 枚举值
 
-| 值 | 描述 | 对应环境变量 |
-|----|------|-------------|
-| `abap-clean-core` | ABAP Clean Core 重构助手 | `DASHSCOPE_APP_ID_ABAP` |
-| `cpi` | SAP CPI 集成助手 | `DASHSCOPE_APP_ID_CPI` |
-| `func-doc` | 功能文档生成助手 | `DASHSCOPE_APP_ID_FUNC_DOC` |
-| `tech-doc` | 技术文档生成助手 | `DASHSCOPE_APP_ID_TECH_DOC` |
-| `code-review` | 代码审查助手 | `DASHSCOPE_APP_ID_CODE_REVIEW` |
-| `unit-test` | 单元测试生成助手 | `DASHSCOPE_APP_ID_UNIT_TEST` |
-| `diagram` | 流程图生成助手 | `DASHSCOPE_APP_ID_DIAGRAM` |
+| 值 | 描述 | 对应环境变量 | 回退逻辑 |
+|----|------|-------------|---------|
+| `abap-clean-core` | ABAP Clean Core 重构助手 | `DASHSCOPE_APP_ID_ABAP` | 未配置时回退到 `DASHSCOPE_APP_ID` |
+| `cpi` | SAP CPI 集成助手 | `DASHSCOPE_APP_ID_CPI` | 未配置时回退到默认应用 ID |
+| `func-doc` | 功能文档生成助手 | `DASHSCOPE_APP_ID_FUNC_DOC` | 未配置时回退到默认应用 ID |
+| `tech-doc` | 技术文档生成助手 | `DASHSCOPE_APP_ID_TECH_DOC` | 未配置时回退到默认应用 ID |
+| `code-review` | 代码审查助手 | `DASHSCOPE_APP_ID_CODE_REVIEW` | 未配置时回退到默认应用 ID |
+| `unit-test` | 单元测试生成助手 | `DASHSCOPE_APP_ID_UNIT_TEST` | 未配置时回退到默认应用 ID |
+| `diagram` | 流程图生成助手 | `DASHSCOPE_APP_ID_DIAGRAM` | 未配置时回退到默认应用 ID |
 
 > **默认值**: 未传 `aiType` 时默认使用 `abap-clean-core`。
+> **回退机制**: 当指定的 `aiType` 对应的环境变量未配置时，系统会回退到 `DEFAULT_APP_ID`（即 `DASHSCOPE_APP_ID` 或 `DASHSCOPE_APP_ID_ABAP`）。
 > **注**: 文件上传分析功能通过 `sessionFileIds` 参数支持，可与上述任意 `aiType` 配合使用（RAG 模式），无需特定的 `aiType`。
 
 ---
@@ -680,7 +681,7 @@ curl http://localhost:4004/api/files/session/file_session_abc123/status
 
 | 版本 | 日期 | 变更 |
 |-----|------|------|
-| v1.4.3 | 2025-01 | 添加文件上传接口文档 |
+| v1.4.3 | 2025-01-23 | 更新文档与代码一致性 |
 | v1.4.0 | 2025-01 | 添加流程图生成支持 |
 | v1.3.0 | 2024-12 | 添加会话管理策略 |
 | v1.0.0 | 2024-12 | 初始版本 |

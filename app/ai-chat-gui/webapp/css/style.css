@@ -17,36 +17,45 @@ body,
     position: relative;
 }
 
-/* 顶部工具栏 - 新建对话按钮 */
-.newChatBtn {
+/* 顶部工具栏 - 新建对话按钮 (蓝色主题) */
+.newChatBtn,
+.newChatBtn.sapMBtn,
+.newChatBtn.sapMBtnTransparent {
     background: transparent !important;
-    border: 1px solid rgba(161, 0, 255, 0.3) !important;
+    border: none !important;
     border-radius: 20px !important;
-    /* 胶囊形状 */
-    height: 32px !important;
+    height: 36px !important;
     transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
-.newChatBtn .sapMBtnInner {
+.newChatBtn .sapMBtnInner,
+.newChatBtn.sapMBtn .sapMBtnInner {
+    background: rgba(0, 112, 173, 0.08) !important;
+    border: 1.5px solid #0070AD !important;
     border-radius: 20px !important;
-    padding: 0 12px !important;
+    padding: 0 16px !important;
+    box-shadow: none !important;
+    height: 100% !important;
 }
 
-.newChatBtn .sapMBtnContent {
-    color: #A100FF !important;
-    font-weight: 600 !important;
-}
-
-.newChatBtn .sapUiIcon {
-    color: #A100FF !important;
+.newChatBtn .sapUiIcon,
+.newChatBtn.sapMBtn .sapUiIcon {
+    color: #0070AD !important;
     font-size: 0.9rem !important;
-    margin-right: 4px !important;
+    margin-right: 6px !important;
 }
 
-.newChatBtn:hover {
-    background: rgba(161, 0, 255, 0.05) !important;
-    border-color: #A100FF !important;
-    box-shadow: 0 2px 8px rgba(161, 0, 255, 0.15);
+.newChatBtn:hover .sapMBtnInner,
+.newChatBtn.sapMBtn:hover .sapMBtnInner {
+    background: rgba(0, 112, 173, 0.15) !important;
+    border-color: #0070AD !important;
+}
+
+.newChatBtn:active .sapMBtnInner,
+.newChatBtn.sapMBtn:active .sapMBtnInner {
+    background: rgba(0, 112, 173, 0.2) !important;
 }
 
 /* 隐藏滚动条但保留功能 (Chrome/Safari) */
