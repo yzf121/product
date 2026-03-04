@@ -1243,45 +1243,6 @@ body,
     color: #ffffff !important;
 }
 
-/* 旧版样式保留兼容 */
-.drawioDialogCustom .sapMDialogSection {
-    padding: 0 !important;
-}
-
-.drawioDialogCustom .sapMDialogScroll {
-    height: 100% !important;
-}
-
-.drawioDialogHeader {
-    background-color: #1a1a2e !important;
-    border-bottom: none !important;
-}
-
-.drawioDialogHeader .sapMBarLeft,
-.drawioDialogHeader .sapMBarRight {
-    background-color: transparent !important;
-}
-
-.drawioDialogTitle {
-    color: #ffffff !important;
-    font-weight: 600 !important;
-}
-
-.drawioDialogHeader .sapMBtn {
-    color: #ffffff !important;
-}
-
-.drawioDialogHeader .sapMBtnTransparent .sapMBtnInner {
-    color: #ffffff !important;
-}
-
-.drawioDialogHeader .sapMBtnTransparent:hover .sapMBtnInner {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.drawioDialogHeader .sapUiIcon {
-    color: #ffffff !important;
-}
 
 .drawioTipBar {
     background-color: #fff3cd !important;

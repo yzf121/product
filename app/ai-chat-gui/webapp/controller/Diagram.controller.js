@@ -3,23 +3,24 @@ sap.ui.define([
     "sap/m/MessageBox",
     "sap/m/MessageToast",
     "sap/ui/model/json/JSONModel",
-    "sap/ui/core/HTML"
-], function (Controller, MessageBox, MessageToast, JSONModel, HTML) {
+    "sap/ui/core/HTML",
+    "com/ai/assistant/aichatapp/util/Utils"
+], function (Controller, MessageBox, MessageToast, JSONModel, HTML, Utils) {
     "use strict";
 
     return Controller.extend("com.ai.assistant.aichatapp.controller.Diagram", {
-        
+
         // 架构图应用ID（从环境变量配置）
         _DIAGRAM_AI_TYPE: "diagram",
-        
+
         // 缩放相关常量
         _ZOOM_STEP: 0.15,
         _MIN_ZOOM: 0.2,
         _MAX_ZOOM: 3,
-        
+
         // Mermaid 渲染计数器（确保唯一ID）
         _renderCount: 0,
-        
+
         /**
          * 控制器初始化
          */
@@ -38,11 +39,11 @@ sap.ui.define([
                 sessionId: null
             });
             this.getView().setModel(oDiagramModel, "diagram");
-            
+
             // 初始化 Mermaid 库
             this._initMermaid();
         },
-        
+
         /**
          * 视图渲染完成后
          */
@@ -50,18 +51,18 @@ sap.ui.define([
             // 初始化预览区域
             this._initPreviewArea();
         },
-        
+
         /**
          * 初始化 Mermaid 库
          */
         _initMermaid: function () {
             var that = this;
-            
+
             if (typeof mermaid !== "undefined") {
                 this._configureMermaid();
                 return;
             }
-            
+
             // 动态加载 Mermaid
             var script = document.createElement("script");
             script.src = sap.ui.require.toUrl("com/ai/assistant/aichatapp/lib/mermaid.min.js");
@@ -75,7 +76,7 @@ sap.ui.define([
             };
             document.head.appendChild(script);
         },
-        
+
         /**
          * 配置 Mermaid
          */
@@ -101,7 +102,7 @@ sap.ui.define([
                 });
             }
         },
-        
+
         /**
          * 初始化预览区域
          */
@@ -110,66 +111,66 @@ sap.ui.define([
             if (this._bPreviewInitializing) {
                 return;
             }
-            
+
             var oPreviewContainer = this.byId("previewContainer");
             if (!oPreviewContainer) {
                 console.warn("[Diagram] previewContainer 未找到");
                 return;
             }
-            
+
             var oDomRef = oPreviewContainer.getDomRef();
             if (!oDomRef) {
                 // DOM 未准备好，延迟重试
                 var that = this;
                 this._bPreviewInitializing = true;
-                setTimeout(function() {
+                setTimeout(function () {
                     that._bPreviewInitializing = false;
                     that._initPreviewArea();
                 }, 100);
                 return;
             }
-            
+
             // 创建预览区域 HTML 结构
             this._createPreviewHTML(oDomRef);
-            
+
             // 初始化拖拽和缩放
             this._initInteractions();
-            
+
             console.log("[Diagram] 预览区域初始化完成");
         },
-        
+
         /**
          * 创建预览区域 HTML
          */
         _createPreviewHTML: function (oContainer) {
             // 清空容器
             oContainer.innerHTML = "";
-            
+
             // 创建预览区域
             var oPreviewArea = document.createElement("div");
             oPreviewArea.id = this.getView().getId() + "--previewArea";
             oPreviewArea.className = "mermaidPreviewArea";
-            
+
             // 创建内容容器
             var oContentWrapper = document.createElement("div");
             oContentWrapper.className = "mermaidContentWrapper";
             oContentWrapper.id = this.getView().getId() + "--mermaidContent";
-            
+
             // 占位符
-            oContentWrapper.innerHTML = 
+            oContentWrapper.innerHTML =
                 '<div class="diagramPlaceholder">' +
                 '<span class="sapUiIcon" style="font-family:SAP-icons;font-size:4rem;color:#bbb;">&#xe145;</span>' +
                 '<p>输入描述并点击生成按钮来创建流程图</p>' +
                 '</div>';
-            
+
             oPreviewArea.appendChild(oContentWrapper);
             oContainer.appendChild(oPreviewArea);
-            
+
             // 保存引用
             this._oPreviewArea = oPreviewArea;
             this._oContentWrapper = oContentWrapper;
         },
-        
+
         /**
          * 初始化交互功能（拖拽、缩放）
          */
@@ -177,10 +178,10 @@ sap.ui.define([
             var that = this;
             var oPreviewArea = this._oPreviewArea;
             if (!oPreviewArea) return;
-            
+
             var isDragging = false;
             var startX, startY, scrollLeft, scrollTop;
-            
+
             // 鼠标按下
             oPreviewArea.addEventListener("mousedown", function (e) {
                 // 只在 SVG 区域启用拖拽
@@ -194,7 +195,7 @@ sap.ui.define([
                     e.preventDefault();
                 }
             });
-            
+
             // 鼠标移动
             oPreviewArea.addEventListener("mousemove", function (e) {
                 if (!isDragging) return;
@@ -206,7 +207,7 @@ sap.ui.define([
                 oPreviewArea.scrollLeft = scrollLeft - walkX;
                 oPreviewArea.scrollTop = scrollTop - walkY;
             });
-            
+
             // 鼠标释放
             document.addEventListener("mouseup", function () {
                 if (isDragging) {
@@ -216,7 +217,7 @@ sap.ui.define([
                     }
                 }
             });
-            
+
             // 滚轮缩放（Ctrl + 滚轮）
             oPreviewArea.addEventListener("wheel", function (e) {
                 if (e.ctrlKey) {
@@ -229,7 +230,7 @@ sap.ui.define([
                 }
             }, { passive: false });
         },
-        
+
         /**
          * 返回首页
          */
@@ -237,7 +238,7 @@ sap.ui.define([
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("home");
         },
-        
+
         /**
          * 生成流程图
          */
@@ -245,27 +246,27 @@ sap.ui.define([
             var that = this;
             var oModel = this.getView().getModel("diagram");
             var sInput = oModel.getProperty("/inputValue");
-            
+
             if (!sInput || !sInput.trim()) {
                 MessageToast.show(this._getI18nText("pleaseEnterDescription"));
                 return;
             }
-            
+
             // 防止重复点击
             if (oModel.getProperty("/isLoading")) {
                 return;
             }
-            
+
             // 确保预览区域已初始化
             if (!this._oContentWrapper) {
                 this._initPreviewArea();
                 // 延迟执行，等待初始化完成
-                setTimeout(function() {
+                setTimeout(function () {
                     that.onGenerateDiagram();
                 }, 200);
                 return;
             }
-            
+
             // 构建提示词，要求严格输出 Mermaid 格式
             var sPrompt = sInput.trim() + "\n\n" +
                 "【重要要求】请严格按照以下格式输出：\n" +
@@ -278,10 +279,10 @@ sap.ui.define([
                 "    A[开始] --> B[处理]\n" +
                 "    B --> C[结束]\n" +
                 "```";
-            
+
             this._callDiagramAI(sPrompt, false);
         },
-        
+
         /**
          * 重新生成流程图
          */
@@ -297,23 +298,25 @@ sap.ui.define([
         _callDiagramAI: function (sPrompt, bIsFixRequest) {
             var that = this;
             var oModel = this.getView().getModel("diagram");
-            
+
             // 设置加载状态
             oModel.setProperty("/isLoading", true);
             oModel.setProperty("/showFixButton", false);
             oModel.setProperty("/errorMessage", "");
-            
+
             // 构建请求体
             var sSessionId = oModel.getProperty("/sessionId");
             var oRequestBody = {
                 message: sPrompt,
                 aiType: this._DIAGRAM_AI_TYPE
             };
-            
+
             if (sSessionId) {
                 oRequestBody.sessionId = sSessionId;
             }
-            
+
+            var sFullContent = "";
+
             // 调用流式 API
             fetch("/api/chat/stream", {
                 method: "POST",
@@ -325,29 +328,13 @@ sap.ui.define([
                 if (!response.ok) {
                     throw new Error(that._getI18nText("networkError"));
                 }
-                
+
                 if (!response.body) {
                     throw new Error(that._getI18nText("streamNotSupported"));
                 }
-                
-                var reader = response.body.getReader();
-                var decoder = new TextDecoder();
-                var sFullContent = "";
-                var sBuffer = "";
 
-                function processLine(sLine) {
-                    if (!sLine || !sLine.startsWith("data:")) {
-                        return;
-                    }
-
-                    var sData = sLine.slice(5).trim();
-                    if (!sData || sData === "[DONE]") {
-                        return;
-                    }
-
-                    try {
-                        var oData = JSON.parse(sData);
-
+                return Utils.parseSSEStream(response, {
+                    onData: function (oData) {
                         if (oData.error) {
                             MessageToast.show(oData.error);
                             return;
@@ -360,46 +347,23 @@ sap.ui.define([
                         if (oData.sessionId) {
                             oModel.setProperty("/sessionId", oData.sessionId);
                         }
-                    } catch (e) {
-                        // ignore parse errors from partial frames
+                    },
+                    onDone: function () {
+                        that._processAIResponse(sFullContent, bIsFixRequest);
+                        oModel.setProperty("/isLoading", false);
+                    },
+                    onError: function (error) {
+                        console.error("[Diagram] 流读取错误:", error);
+                        oModel.setProperty("/isLoading", false);
                     }
-                }
-
-                function handleChunk(sChunk) {
-                    sBuffer += sChunk;
-                    var aLines = sBuffer.split(/\r?\n/);
-                    sBuffer = aLines.pop();
-                    aLines.forEach(processLine);
-                }
-
-                
-                function readStream() {
-                    return reader.read().then(function (result) {
-                        if (result.done) {
-                            if (sBuffer.trim()) {
-                                processLine(sBuffer);
-                            }
-                            // 流结束，处理完整响应
-                            that._processAIResponse(sFullContent, bIsFixRequest);
-                            oModel.setProperty("/isLoading", false);
-                            return;
-                        }
-                        
-                        var sChunk = decoder.decode(result.value, { stream: true });
-                        handleChunk(sChunk);
-
-                        return readStream();
-                    });
-                }
-                
-                return readStream();
+                });
             }).catch(function (error) {
                 console.error("[Diagram] AI 调用错误:", error);
                 MessageToast.show(that._getI18nText("aiServiceUnavailable"));
                 oModel.setProperty("/isLoading", false);
             });
         },
-        
+
         /**
          * 处理 AI 响应，提取 Mermaid 代码
          * @param {string} sResponse AI 完整响应
@@ -407,37 +371,37 @@ sap.ui.define([
          */
         _processAIResponse: function (sResponse, bIsFixRequest) {
             var oModel = this.getView().getModel("diagram");
-            
+
             // 保存原始响应
             oModel.setProperty("/lastAiResponse", sResponse);
-            
+
             // 尝试提取 Mermaid 代码块
             var sMermaidCode = this._extractMermaidCode(sResponse);
-            
+
             if (sMermaidCode) {
                 // 清理和修复 Mermaid 代码
                 sMermaidCode = this._cleanMermaidCode(sMermaidCode);
-                
+
                 oModel.setProperty("/mermaidCode", sMermaidCode);
                 oModel.setProperty("/hasMermaid", true);
                 oModel.setProperty("/showFixButton", false);
-                
+
                 // 自动渲染
                 this._renderMermaid(sMermaidCode);
-                
+
                 MessageToast.show(this._getI18nText("diagramGenerated"));
             } else {
                 // 未提取到 Mermaid，显示修复按钮
                 oModel.setProperty("/hasMermaid", false);
                 oModel.setProperty("/showFixButton", true);
                 oModel.setProperty("/errorMessage", this._getI18nText("outputFormatError"));
-                
+
                 if (bIsFixRequest) {
                     MessageToast.show(this._getI18nText("fixFailed"));
                 }
             }
         },
-        
+
         /**
          * 从 AI 响应中提取 Mermaid 代码
          * @param {string} sResponse AI 响应文本
@@ -445,34 +409,34 @@ sap.ui.define([
          */
         _extractMermaidCode: function (sResponse) {
             if (!sResponse) return null;
-            
+
             // 匹配 ```mermaid ... ``` 代码块
             var rMermaidBlock = /```mermaid\s*([\s\S]*?)```/i;
             var aMatch = sResponse.match(rMermaidBlock);
-            
+
             if (aMatch && aMatch[1]) {
                 return aMatch[1].trim();
             }
-            
+
             // 尝试匹配没有 mermaid 标记的代码块
             var rCodeBlock = /```\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|gitGraph|subgraph)([\s\S]*?)```/i;
             aMatch = sResponse.match(rCodeBlock);
-            
+
             if (aMatch) {
                 return (aMatch[1] + aMatch[2]).trim();
             }
-            
+
             // 尝试直接匹配 Mermaid 语法
             var rDirectMermaid = /^(graph|flowchart)\s+(TB|TD|BT|RL|LR)[\s\S]+/im;
             aMatch = sResponse.match(rDirectMermaid);
-            
+
             if (aMatch) {
                 return aMatch[0].trim();
             }
-            
+
             return null;
         },
-        
+
         /**
          * 清理和修复 Mermaid 代码
          * @param {string} sCode 原始代码
@@ -480,18 +444,18 @@ sap.ui.define([
          */
         _cleanMermaidCode: function (sCode) {
             if (!sCode) return sCode;
-            
+
             var sClean = sCode;
-            
+
             // 移除可能的 BOM 和特殊字符
             sClean = sClean.replace(/^\uFEFF/, "");
-            
+
             // 统一换行符
             sClean = sClean.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-            
+
             // 移除多余的空行
             sClean = sClean.replace(/\n{3,}/g, "\n\n");
-            
+
             // 修复常见的语法问题
             // 1. 确保 flowchart/graph 后有方向
             if (/^flowchart\s*$/im.test(sClean)) {
@@ -500,26 +464,26 @@ sap.ui.define([
             if (/^graph\s*$/im.test(sClean)) {
                 sClean = sClean.replace(/^graph\s*$/im, "graph TD");
             }
-            
+
             // 2. 修复中文标点
             sClean = sClean.replace(/：/g, ":").replace(/；/g, ";");
-            
+
             // 3. 修复箭头格式
             sClean = sClean.replace(/--\s*>/g, "-->").replace(/-\s+->/g, "-->");
-            
+
             // 4. 移除行尾多余空格
-            sClean = sClean.split("\n").map(function(line) {
+            sClean = sClean.split("\n").map(function (line) {
                 return line.trimEnd();
             }).join("\n");
-            
+
             // 5. 确保以换行结尾
             if (!sClean.endsWith("\n")) {
                 sClean += "\n";
             }
-            
+
             return sClean.trim();
         },
-        
+
         /**
          * 一键修复输出格式
          */
@@ -527,8 +491,8 @@ sap.ui.define([
             var oModel = this.getView().getModel("diagram");
             var sLastResponse = oModel.getProperty("/lastAiResponse");
             var sOriginalInput = oModel.getProperty("/inputValue");
-            
-            var sFixPrompt = 
+
+            var sFixPrompt =
                 "你之前的回复格式不正确，我无法提取 Mermaid 代码。请重新生成。\n\n" +
                 "【严格要求】\n" +
                 "1. 必须使用 ```mermaid 开头\n" +
@@ -545,10 +509,10 @@ sap.ui.define([
                 "    C -->|否| B\n" +
                 "```\n\n" +
                 "请按此格式重新生成流程图。";
-            
+
             this._callDiagramAI(sFixPrompt, true);
         },
-        
+
         /**
          * Mermaid 代码变更
          */
@@ -557,23 +521,23 @@ sap.ui.define([
             var sMermaidCode = oModel.getProperty("/mermaidCode");
             oModel.setProperty("/hasMermaid", sMermaidCode && sMermaidCode.trim() !== "");
         },
-        
+
         /**
          * 手动渲染 Mermaid
          */
         onRenderMermaid: function () {
             var oModel = this.getView().getModel("diagram");
             var sMermaidCode = oModel.getProperty("/mermaidCode");
-            
+
             if (!sMermaidCode || !sMermaidCode.trim()) {
                 MessageToast.show(this._getI18nText("noMermaidCode"));
                 return;
             }
-            
+
             // 清理代码后渲染
             var sCleanCode = this._cleanMermaidCode(sMermaidCode);
             oModel.setProperty("/mermaidCode", sCleanCode);
-            
+
             this._renderMermaid(sCleanCode);
         },
 
@@ -584,44 +548,44 @@ sap.ui.define([
         _renderMermaid: function (sMermaidCode) {
             var that = this;
             var oModel = this.getView().getModel("diagram");
-            
+
             // 确保预览区域存在
             if (!this._oContentWrapper) {
                 this._initPreviewArea();
-                setTimeout(function() {
+                setTimeout(function () {
                     that._renderMermaid(sMermaidCode);
                 }, 200);
                 return;
             }
-            
+
             // 检查 Mermaid 库
             if (typeof mermaid === "undefined") {
                 MessageToast.show(this._getI18nText("mermaidNotLoaded"));
                 return;
             }
-            
+
             // 隐藏错误提示
             oModel.setProperty("/showFixButton", false);
-            
+
             // 生成唯一 ID
             this._renderCount++;
             var sId = "mermaid-diagram-" + this._renderCount + "-" + Date.now();
-            
+
             // 清空内容区域
             this._oContentWrapper.innerHTML = "";
-            
+
             // 创建渲染容器
             var oRenderDiv = document.createElement("div");
             oRenderDiv.className = "mermaidRenderContainer";
             oRenderDiv.id = sId + "-container";
             this._oContentWrapper.appendChild(oRenderDiv);
-            
+
             try {
                 // 使用 Mermaid 渲染
                 mermaid.render(sId, sMermaidCode).then(function (result) {
                     // 成功渲染
                     oRenderDiv.innerHTML = result.svg;
-                    
+
                     // 获取 SVG 并优化
                     var oSvg = oRenderDiv.querySelector("svg");
                     if (oSvg) {
@@ -630,57 +594,57 @@ sap.ui.define([
                         oSvg.style.height = "auto";
                         oSvg.style.minWidth = "400px";
                         oSvg.style.display = "block";
-                        
+
                         // 保存 SVG 引用
                         that._oRenderedSvg = oSvg;
-                        
+
                         // 重置原始尺寸记录（下次缩放时重新计算）
                         that._nOriginalWidth = null;
                         that._nOriginalHeight = null;
                     }
-                    
+
                     // 重置缩放级别
                     oModel.setProperty("/zoomLevel", 1);
-                    
+
                     // 设置光标
                     if (that._oPreviewArea) {
                         that._oPreviewArea.style.cursor = "grab";
                     }
-                    
+
                     MessageToast.show(that._getI18nText("renderSuccess"));
-                    
+
                 }).catch(function (error) {
                     console.error("[Diagram] Mermaid 渲染错误:", error);
                     that._showRenderError(error.message || error.str || "Mermaid 语法错误");
                 });
-                
+
             } catch (error) {
                 console.error("[Diagram] Mermaid 渲染异常:", error);
                 this._showRenderError(error.message || "渲染异常");
             }
         },
-        
+
         /**
          * 显示渲染错误
          * @param {string} sError 错误信息
          */
         _showRenderError: function (sError) {
             var oModel = this.getView().getModel("diagram");
-            
+
             if (this._oContentWrapper) {
-                this._oContentWrapper.innerHTML = 
+                this._oContentWrapper.innerHTML =
                     '<div class="renderErrorContainer">' +
                     '  <div class="renderErrorIcon">⚠️</div>' +
                     '  <div class="renderErrorTitle">' + this._getI18nText("renderFailed") + '</div>' +
-                    '  <div class="renderErrorMessage">' + this._escapeHtml(sError) + '</div>' +
+                    '  <div class="renderErrorMessage">' + Utils.escapeHtml(sError) + '</div>' +
                     '  <div class="renderErrorHint">请检查 Mermaid 语法，或点击左侧"修复输出格式"按钮</div>' +
                     '</div>';
             }
-            
+
             oModel.setProperty("/showFixButton", true);
             oModel.setProperty("/errorMessage", sError);
         },
-        
+
         /**
          * 复制 Mermaid 代码
          */
@@ -688,19 +652,19 @@ sap.ui.define([
             var that = this;
             var oModel = this.getView().getModel("diagram");
             var sMermaidCode = oModel.getProperty("/mermaidCode");
-            
+
             if (!sMermaidCode) {
                 MessageToast.show(this._getI18nText("noMermaidCode"));
                 return;
             }
-            
-            this._copyTextToClipboard(sMermaidCode).then(function () {
+
+            Utils.copyTextToClipboard(sMermaidCode).then(function () {
                 MessageToast.show(that._getI18nText("mermaidCopied"));
             }).catch(function () {
                 MessageToast.show(that._getI18nText("copyFailed"));
             });
         },
-        
+
         /**
          * 视图模式切换
          */
@@ -708,23 +672,23 @@ sap.ui.define([
             var sKey = oEvent.getParameter("item").getKey();
             var oModel = this.getView().getModel("diagram");
             oModel.setProperty("/viewMode", sKey);
-            
+
             if (!this._oContentWrapper) return;
-            
+
             var sMermaidCode = oModel.getProperty("/mermaidCode");
-            
+
             if (sKey === "code") {
                 // 显示代码视图
-                this._oContentWrapper.innerHTML = 
-                    '<pre class="mermaidCodeView"><code>' + 
-                    this._escapeHtml(sMermaidCode || "暂无 Mermaid 代码") + 
+                this._oContentWrapper.innerHTML =
+                    '<pre class="mermaidCodeView"><code>' +
+                    Utils.escapeHtml(sMermaidCode || "暂无 Mermaid 代码") +
                     '</code></pre>';
             } else {
                 // 预览模式 - 重新渲染
                 if (sMermaidCode) {
                     this._renderMermaid(sMermaidCode);
                 } else {
-                    this._oContentWrapper.innerHTML = 
+                    this._oContentWrapper.innerHTML =
                         '<div class="diagramPlaceholder">' +
                         '<span class="sapUiIcon" style="font-family:SAP-icons;font-size:4rem;color:#bbb;">&#xe145;</span>' +
                         '<p>输入描述并点击生成按钮来创建流程图</p>' +
@@ -732,7 +696,7 @@ sap.ui.define([
                 }
             }
         },
-        
+
         /**
          * 缩放控制
          */
@@ -743,7 +707,7 @@ sap.ui.define([
             oModel.setProperty("/zoomLevel", nZoom);
             this._applyZoom(nZoom);
         },
-        
+
         onZoomOut: function () {
             var oModel = this.getView().getModel("diagram");
             var nZoom = oModel.getProperty("/zoomLevel");
@@ -751,30 +715,30 @@ sap.ui.define([
             oModel.setProperty("/zoomLevel", nZoom);
             this._applyZoom(nZoom);
         },
-        
+
         onResetZoom: function () {
             var oModel = this.getView().getModel("diagram");
             oModel.setProperty("/zoomLevel", 1);
             this._applyZoom(1);
-            
+
             // 重置滚动位置
             if (this._oPreviewArea) {
                 this._oPreviewArea.scrollLeft = 0;
                 this._oPreviewArea.scrollTop = 0;
             }
         },
-        
+
         /**
          * 应用缩放 - 同时调整容器大小
          */
         _applyZoom: function (nZoom) {
-            var oRenderContainer = this._oContentWrapper ? 
+            var oRenderContainer = this._oContentWrapper ?
                 this._oContentWrapper.querySelector(".mermaidRenderContainer") : null;
-            
+
             if (oRenderContainer && this._oRenderedSvg) {
                 // 获取 SVG 原始尺寸
                 var oSvg = this._oRenderedSvg;
-                
+
                 // 如果没有保存原始尺寸，先保存
                 if (!this._nOriginalWidth) {
                     var oRect = oSvg.getBoundingClientRect();
@@ -784,40 +748,40 @@ sap.ui.define([
                     this._nOriginalWidth = oRect.width / nCurrentZoom;
                     this._nOriginalHeight = oRect.height / nCurrentZoom;
                 }
-                
+
                 // 计算缩放后的尺寸
                 var nNewWidth = this._nOriginalWidth * nZoom;
                 var nNewHeight = this._nOriginalHeight * nZoom;
-                
+
                 // 设置 SVG 尺寸
                 oSvg.style.width = nNewWidth + "px";
                 oSvg.style.height = nNewHeight + "px";
                 oSvg.style.transform = "none"; // 不使用 transform，直接改尺寸
-                
+
                 // 调整容器大小以适应
                 oRenderContainer.style.width = "auto";
                 oRenderContainer.style.height = "auto";
                 oRenderContainer.style.display = "inline-block";
             }
         },
-        
+
         /**
          * 下载 PNG
          */
         onDownloadPNG: function () {
             var that = this;
-            
+
             if (!this._oRenderedSvg) {
                 MessageToast.show(this._getI18nText("noImageToDownload"));
                 return;
             }
-            
+
             this._svgToPng(this._oRenderedSvg, function (sDataUrl) {
                 that._downloadFile(sDataUrl, "diagram-" + Date.now() + ".png");
                 MessageToast.show(that._getI18nText("downloadStarted"));
             });
         },
-        
+
         /**
          * 下载 SVG
          */
@@ -826,34 +790,34 @@ sap.ui.define([
                 MessageToast.show(this._getI18nText("noImageToDownload"));
                 return;
             }
-            
+
             var sSvgData = new XMLSerializer().serializeToString(this._oRenderedSvg);
             var oBlob = new Blob([sSvgData], { type: "image/svg+xml;charset=utf-8" });
             var sUrl = URL.createObjectURL(oBlob);
-            
+
             this._downloadFile(sUrl, "diagram-" + Date.now() + ".svg");
             URL.revokeObjectURL(sUrl);
-            
+
             MessageToast.show(this._getI18nText("downloadStarted"));
         },
-        
+
         /**
          * 复制图片到剪贴板
          */
         onCopyImage: function () {
             var that = this;
-            
+
             if (!this._oRenderedSvg) {
                 MessageToast.show(this._getI18nText("noImageToCopy"));
                 return;
             }
-            
+
             // 检查剪贴板 API
             if (!navigator.clipboard || !navigator.clipboard.write) {
                 MessageToast.show(this._getI18nText("clipboardNotSupported"));
                 return;
             }
-            
+
             this._svgToPng(this._oRenderedSvg, function (sDataUrl) {
                 fetch(sDataUrl)
                     .then(function (res) { return res.blob(); })
@@ -870,7 +834,7 @@ sap.ui.define([
                     });
             });
         },
-        
+
         /**
          * SVG 转 PNG
          */
@@ -879,35 +843,35 @@ sap.ui.define([
             var oCanvas = document.createElement("canvas");
             var oCtx = oCanvas.getContext("2d");
             var oImg = new Image();
-            
+
             // 获取尺寸
             var oRect = oSvg.getBoundingClientRect();
             var nWidth = oRect.width || oSvg.viewBox.baseVal.width || 800;
             var nHeight = oRect.height || oSvg.viewBox.baseVal.height || 600;
-            
+
             // 2倍分辨率
             var nScale = 2;
             oCanvas.width = nWidth * nScale;
             oCanvas.height = nHeight * nScale;
             oCtx.scale(nScale, nScale);
-            
+
             // 白色背景
             oCtx.fillStyle = "#ffffff";
             oCtx.fillRect(0, 0, nWidth, nHeight);
-            
+
             oImg.onload = function () {
                 oCtx.drawImage(oImg, 0, 0, nWidth, nHeight);
                 fnCallback(oCanvas.toDataURL("image/png"));
             };
-            
+
             oImg.onerror = function () {
                 console.error("[Diagram] SVG 转 PNG 失败");
             };
-            
+
             var sSvgBase64 = btoa(unescape(encodeURIComponent(sSvgData)));
             oImg.src = "data:image/svg+xml;base64," + sSvgBase64;
         },
-        
+
         /**
          * 下载文件
          */
@@ -920,34 +884,6 @@ sap.ui.define([
             document.body.removeChild(oLink);
         },
 
-        _copyTextToClipboard: function (sText) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                return navigator.clipboard.writeText(sText);
-            }
-            return new Promise(function (resolve, reject) {
-                var oTextarea = document.createElement("textarea");
-                oTextarea.value = sText;
-                oTextarea.setAttribute("readonly", "");
-                oTextarea.style.position = "absolute";
-                oTextarea.style.left = "-9999px";
-                document.body.appendChild(oTextarea);
-                oTextarea.select();
-                try {
-                    var bSuccess = document.execCommand("copy");
-                    if (bSuccess) {
-                        resolve();
-                    } else {
-                        reject(new Error("copy failed"));
-                    }
-                } catch (e) {
-                    reject(e);
-                } finally {
-                    document.body.removeChild(oTextarea);
-                }
-            });
-        },
-
-
         /**
          * 在 Draw.io 中打开编辑
          * 使用 embed.diagrams.net 嵌入模式，配置完整功能
@@ -956,19 +892,19 @@ sap.ui.define([
             var that = this;
             var oModel = this.getView().getModel("diagram");
             var sMermaidCode = oModel.getProperty("/mermaidCode");
-            
+
             if (!sMermaidCode) {
                 MessageToast.show(this._getI18nText("noMermaidCode"));
                 return;
             }
-            
+
             // 先复制 Mermaid 代码到剪贴板
-            this._copyTextToClipboard(sMermaidCode).then(function() {
+            Utils.copyTextToClipboard(sMermaidCode).then(function () {
                 MessageToast.show("Mermaid 代码已复制，请在编辑器中 Arrange → Insert → Advanced → Mermaid 粘贴");
-            }).catch(function() {
+            }).catch(function () {
                 console.warn("[Diagram] 复制失败");
             });
-            
+
             // 创建对话框（异步加载 Fragment）
             if (!this._oDrawioDialog) {
                 // 第一次加载，使用 Promise 确保加载完成
@@ -977,7 +913,7 @@ sap.ui.define([
                     id: this.getView().getId(),
                     name: "com.ai.assistant.aichatapp.view.DrawioDialog",
                     controller: this
-                }).then(function(oDialog) {
+                }).then(function (oDialog) {
                     that._oDrawioDialog = oDialog;
                     that.getView().addDependent(oDialog);
                     that._bDrawioLoading = false;
@@ -986,42 +922,42 @@ sap.ui.define([
                     setTimeout(function () {
                         that._initDrawioEmbed();
                     }, 300);
-                }).catch(function(err) {
+                }).catch(function (err) {
                     console.error("[Diagram] Fragment 加载失败:", err);
                     that._bDrawioLoading = false;
                 });
                 return; // 等待异步加载完成
             }
-            
+
             // 如果正在加载中，忽略重复点击
             if (this._bDrawioLoading) {
                 return;
             }
-            
+
             // 已加载过，直接打开
             this._oDrawioDialog.open();
-            
+
             setTimeout(function () {
                 that._initDrawioEmbed();
             }, 300);
         },
-        
+
         /**
          * 初始化 Draw.io 嵌入版
          * 使用更完整的配置参数启用更多功能
          */
         _initDrawioEmbed: function () {
             var that = this;
-            
+
             var oIframeBox = sap.ui.core.Fragment.byId(this.getView().getId(), "drawioIframeBox");
             if (!oIframeBox) return;
-            
+
             var oDomRef = oIframeBox.getDomRef();
             if (!oDomRef) {
-                setTimeout(function() { that._initDrawioEmbed(); }, 200);
+                setTimeout(function () { that._initDrawioEmbed(); }, 200);
                 return;
             }
-            
+
             oDomRef.innerHTML = "";
             var oIframe = document.createElement("iframe");
             oIframe.id = this.getView().getId() + "--drawioFrame";
@@ -1029,9 +965,9 @@ sap.ui.define([
             oIframe.setAttribute("allowfullscreen", "true");
             oIframe.setAttribute("allow", "clipboard-read; clipboard-write");
             oDomRef.appendChild(oIframe);
-            
+
             this._oDrawioIframe = oIframe;
-            
+
             // 使用 embed.diagrams.net 但启用更多功能
             // ui=kennedy 使用经典亮色主题界面
             // libraries=1 启用形状库
@@ -1041,28 +977,28 @@ sap.ui.define([
                 "&noSaveBtn=0" +        // 显示保存按钮
                 "&saveAndExit=0" +      // 不自动退出
                 "&noExitBtn=1";         // 隐藏退出按钮（我们有自己的关闭按钮）
-            
+
             oIframe.src = sUrl;
-            
+
             // 监听 Draw.io 消息
-            this._fnDrawioHandler = function(event) {
+            this._fnDrawioHandler = function (event) {
                 if (event.origin !== "https://embed.diagrams.net") return;
                 try {
                     var msg = JSON.parse(event.data);
                     that._handleDrawioMsg(msg);
-                } catch(e) {}
+                } catch (e) { }
             };
             window.addEventListener("message", this._fnDrawioHandler);
         },
-        
+
         /**
          * 处理 Draw.io 消息
          */
-        _handleDrawioMsg: function(msg) {
+        _handleDrawioMsg: function (msg) {
             var oIframe = this._oDrawioIframe;
             if (!oIframe || !oIframe.contentWindow) return;
-            
-            switch(msg.event) {
+
+            switch (msg.event) {
                 case "configure":
                     // 配置 Draw.io
                     oIframe.contentWindow.postMessage(JSON.stringify({
@@ -1075,7 +1011,7 @@ sap.ui.define([
                         }
                     }), "*");
                     break;
-                    
+
                 case "init":
                     // 初始化完成，加载空白图
                     oIframe.contentWindow.postMessage(JSON.stringify({
@@ -1084,25 +1020,25 @@ sap.ui.define([
                         autosave: 0
                     }), "*");
                     break;
-                    
+
                 case "export":
                     this._handleDrawioExport(msg);
                     break;
-                    
+
                 case "save":
                     MessageToast.show("图表已保存");
                     break;
-                    
+
                 case "exit":
                     this.onCloseDrawio();
                     break;
             }
         },
-        
+
         /**
          * 处理导出
          */
-        _handleDrawioExport: function(msg) {
+        _handleDrawioExport: function (msg) {
             if (msg.format === "png" && msg.data) {
                 this._downloadFile(msg.data, "diagram-" + Date.now() + ".png");
                 MessageToast.show(this._getI18nText("exportSuccess"));
@@ -1111,11 +1047,11 @@ sap.ui.define([
                 MessageToast.show(this._getI18nText("exportSuccess"));
             }
         },
-        
+
         /**
          * 导出 PNG
          */
-        onDrawioExportPNG: function() {
+        onDrawioExportPNG: function () {
             if (this._oDrawioIframe && this._oDrawioIframe.contentWindow) {
                 this._oDrawioIframe.contentWindow.postMessage(JSON.stringify({
                     action: "export",
@@ -1125,11 +1061,11 @@ sap.ui.define([
                 }), "*");
             }
         },
-        
+
         /**
          * 导出 SVG
          */
-        onDrawioExportSVG: function() {
+        onDrawioExportSVG: function () {
             if (this._oDrawioIframe && this._oDrawioIframe.contentWindow) {
                 this._oDrawioIframe.contentWindow.postMessage(JSON.stringify({
                     action: "export",
@@ -1137,45 +1073,45 @@ sap.ui.define([
                 }), "*");
             }
         },
-        
+
         /**
          * 复制图片
          */
-        onDrawioCopyImage: function() {
+        onDrawioCopyImage: function () {
             var that = this;
             if (!this._oDrawioIframe || !this._oDrawioIframe.contentWindow) return;
-            
-            var fnHandler = function(event) {
+
+            var fnHandler = function (event) {
                 if (event.origin !== "https://embed.diagrams.net") return;
                 try {
                     var msg = JSON.parse(event.data);
                     if (msg.event === "export" && msg.format === "png" && msg.data) {
                         window.removeEventListener("message", fnHandler);
                         fetch(msg.data)
-                            .then(function(r) { return r.blob(); })
-                            .then(function(blob) {
-                                return navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
+                            .then(function (r) { return r.blob(); })
+                            .then(function (blob) {
+                                return navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
                             })
-                            .then(function() {
+                            .then(function () {
                                 MessageToast.show(that._getI18nText("imageCopied"));
                             })
-                            .catch(function() {
+                            .catch(function () {
                                 MessageToast.show(that._getI18nText("copyImageFailed"));
                             });
                     }
-                } catch(e) {}
+                } catch (e) { }
             };
             window.addEventListener("message", fnHandler);
-            
+
             this._oDrawioIframe.contentWindow.postMessage(JSON.stringify({
                 action: "export", format: "png", scale: 2, background: "#ffffff"
             }), "*");
         },
-        
+
         /**
          * 关闭 Draw.io
          */
-        onCloseDrawio: function() {
+        onCloseDrawio: function () {
             if (this._oDrawioDialog) {
                 this._oDrawioDialog.close();
             }
@@ -1188,7 +1124,7 @@ sap.ui.define([
                 this._oDrawioIframe = null;
             }
         },
-        
+
         /**
          * 获取 i18n 文本
          */
@@ -1199,17 +1135,12 @@ sap.ui.define([
             }
             return sKey;
         },
-        
+
         /**
          * HTML 转义
          */
-        _escapeHtml: function (sText) {
-            if (!sText) return "";
-            var oDiv = document.createElement("div");
-            oDiv.textContent = sText;
-            return oDiv.innerHTML;
-        },
-        
+
+
         /**
          * 控制器销毁
          */

@@ -1,8 +1,9 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
-    "sap/m/MessageToast"
-], function (Controller, MessageBox, MessageToast) {
+    "sap/m/MessageToast",
+    "com/ai/assistant/aichatapp/util/Utils"
+], function (Controller, MessageBox, MessageToast, Utils) {
     "use strict";
 
     // 文件上传配置
@@ -577,6 +578,8 @@ sap.ui.define([
             // 构建请求体（根据session状态决定使用哪种模式）
             var oRequestBody = this._buildRequestBody(sMessage, sSessionId, oSessionInfo, aCurrentMessages, sAiType, sAttachmentContext);
 
+            var sFullContent = "";
+
             // 使用fetch进行流式请求
             fetch("/api/chat/stream", {
                 method: "POST",
@@ -589,29 +592,12 @@ sap.ui.define([
                     throw new Error(oI18n.getText("networkError"));
                 }
 
-                // 检查response.body是否存在（浏览器兼容性）
                 if (!response.body) {
                     throw new Error(oI18n.getText("streamNotSupported"));
                 }
 
-                var reader = response.body.getReader();
-                var decoder = new TextDecoder();
-                var sFullContent = "";
-                var sBuffer = "";
-
-                function processLine(sLine) {
-                    if (!sLine || !sLine.startsWith("data:")) {
-                        return;
-                    }
-
-                    var sData = sLine.slice(5).trim();
-                    if (!sData || sData === "[DONE]") {
-                        return;
-                    }
-
-                    try {
-                        var oData = JSON.parse(sData);
-
+                return Utils.parseSSEStream(response, {
+                    onData: function (oData) {
                         if (oData.error) {
                             MessageToast.show(oData.error);
                             return;
@@ -633,48 +619,20 @@ sap.ui.define([
                                 oModel.setProperty("/conversations", aConversations);
                             }
                         }
-                    } catch (e) {
-                        // ignore parse errors from partial frames
-                    }
-                }
-
-                function handleChunk(sChunk) {
-                    sBuffer += sChunk;
-                    var aLines = sBuffer.split(/\r?\n/);
-                    sBuffer = aLines.pop();
-                    aLines.forEach(processLine);
-                }
-
-
-                function readStream() {
-                    return reader.read().then(function (result) {
-                        if (result.done) {
-                            if (sBuffer.trim()) {
-                                processLine(sBuffer);
-                            }
-                            // 流结束，更新最终内容
-                            that._finalizeAIMessage(sMessageId, sFullContent);
-                            oModel.setProperty("/isLoading", false);
-                            return;
-                        }
-
-                        var sChunk = decoder.decode(result.value, { stream: true });
-                        handleChunk(sChunk);
-
-                        return readStream();
-                    }).catch(function (streamError) {
-                        // 处理流读取过程中的错误
+                    },
+                    onDone: function () {
+                        that._finalizeAIMessage(sMessageId, sFullContent);
+                        oModel.setProperty("/isLoading", false);
+                    },
+                    onError: function (streamError) {
                         console.error("流读取错误:", streamError);
                         if (sFullContent) {
-                            // 如果已有部分内容，保存已接收的内容
                             that._finalizeAIMessage(sMessageId, sFullContent);
                         }
                         oModel.setProperty("/isLoading", false);
                         MessageToast.show(oI18n.getText("connectionInterrupted"));
-                    });
-                }
-
-                return readStream();
+                    }
+                });
             }).catch(function (error) {
                 console.error("AI调用错误:", error);
                 MessageToast.show(oI18n.getText("aiServiceUnavailable"));
@@ -716,7 +674,7 @@ sap.ui.define([
                 '<span class="sapUiIcon userAvatar" style="font-family: SAP-icons">&#xe036;</span>' +
                 '</div>' +
                 '<div class="messageContent">' +
-                '<div class="messageText">' + this._escapeHtml(oMessage.content) + '</div>' +
+                '<div class="messageText">' + Utils.escapeHtml(oMessage.content) + '</div>' +
                 sAttachmentStripHtml +
                 '</div>' +
                 '</div>';
@@ -731,9 +689,9 @@ sap.ui.define([
 
             var that = this;
             var aChips = aAttachments.map(function (oAttachment) {
-                var sName = that._escapeHtml(oAttachment.fileName || "attachment");
-                var sExt = that._escapeHtml((oAttachment.fileExt || "").toUpperCase());
-                var sSize = oAttachment.fileSize ? that._escapeHtml(that._formatFileSize(oAttachment.fileSize)) : "";
+                var sName = Utils.escapeHtml(oAttachment.fileName || "attachment");
+                var sExt = Utils.escapeHtml((oAttachment.fileExt || "").toUpperCase());
+                var sSize = oAttachment.fileSize ? Utils.escapeHtml(that._formatFileSize(oAttachment.fileSize)) : "";
                 var sMeta = "";
 
                 if (sSize && sExt) {
@@ -901,10 +859,10 @@ sap.ui.define([
                     breaks: true,
                     gfm: true
                 });
-                var sSafeContent = this._escapeHtml(sContent);
+                var sSafeContent = Utils.escapeHtml(sContent);
                 return marked.parse(sSafeContent);
             }
-            return this._escapeHtml(sContent);
+            return Utils.escapeHtml(sContent);
         },
 
         // 高亮代码
@@ -917,37 +875,9 @@ sap.ui.define([
             }
         },
 
-        _copyTextToClipboard: function (sText) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                return navigator.clipboard.writeText(sText);
-            }
-            return new Promise(function (resolve, reject) {
-                var oTextarea = document.createElement("textarea");
-                oTextarea.value = sText;
-                oTextarea.setAttribute("readonly", "");
-                oTextarea.style.position = "absolute";
-                oTextarea.style.left = "-9999px";
-                document.body.appendChild(oTextarea);
-                oTextarea.select();
-                try {
-                    var bSuccess = document.execCommand("copy");
-                    if (bSuccess) {
-                        resolve();
-                    } else {
-                        reject(new Error("copy failed"));
-                    }
-                } catch (e) {
-                    reject(e);
-                } finally {
-                    document.body.removeChild(oTextarea);
-                }
-            });
-        },
-
 
         // 添加复制按钮到代码块
         _addCopyButtons: function (oElement) {
-            var that = this;
             var aPreBlocks = oElement.querySelectorAll("pre");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             var sCopyText = oI18n.getText("copy");
@@ -967,7 +897,7 @@ sap.ui.define([
                 oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
                 oCopyBtn.onclick = function () {
                     var sCode = pre.querySelector("code") ? pre.querySelector("code").textContent : pre.textContent;
-                    that._copyTextToClipboard(sCode).then(function () {
+                    Utils.copyTextToClipboard(sCode).then(function () {
                         // SAP-icons: &#xe05b; = accept (勾选图标，表示复制成功)
                         oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe05b;</span> ' + sCopiedText;
                         setTimeout(function () {
@@ -1157,41 +1087,6 @@ sap.ui.define([
             });
         },
 
-        /**
-         * 构建包含历史对话的上下文提示（备用方案）
-         * 将之前的对话历史拼接到当前消息中，让AI能够理解上下文
-         * @param {Array} aMessages 当前对话的所有消息
-         * @param {string} sCurrentMessage 当前用户发送的消息
-         * @returns {string} 包含上下文的完整提示
-         */
-        _buildContextPrompt: function (aMessages, sCurrentMessage) {
-            // 如果只有当前消息（加上刚创建的AI占位消息），直接返回
-            if (aMessages.length <= 2) {
-                return sCurrentMessage;
-            }
-
-            // 构建历史对话上下文（排除最后两条：当前用户消息和AI占位消息）
-            var aHistory = aMessages.slice(0, -2);
-            var sContext = "以下是我们之前的对话历史：\n\n";
-
-            aHistory.forEach(function (msg) {
-                if (msg.role === "user") {
-                    sContext += "用户: " + msg.content + "\n\n";
-                } else if (msg.role === "assistant" && msg.content) {
-                    // AI回复只取前500字符，避免上下文过长
-                    var sContent = msg.content.length > 500
-                        ? msg.content.substring(0, 500) + "..."
-                        : msg.content;
-                    sContext += "助手: " + sContent + "\n\n";
-                }
-            });
-
-            sContext += "---\n\n现在用户的新问题是：\n" + sCurrentMessage;
-            sContext += "\n\n请基于以上对话历史来回答用户的问题。";
-
-            return sContext;
-        },
-
         // 生成UUID
         _generateUUID: function () {
             return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -1210,13 +1105,6 @@ sap.ui.define([
             var sMinute = String(oDate.getMinutes()).padStart(2, "0");
 
             return sYear + "-" + sMonth + "-" + sDay + " " + sHour + ":" + sMinute;
-        },
-
-        // HTML转义
-        _escapeHtml: function (sText) {
-            var oDiv = document.createElement("div");
-            oDiv.textContent = sText;
-            return oDiv.innerHTML;
         },
 
         // 隐藏欢迎框
@@ -1550,8 +1438,8 @@ sap.ui.define([
 
             var oIconInfo = this._getFileTypeIcon(oAttachment.fileExt);
             var sProgressClass = oAttachment.status === 'ready' ? 'complete' : '';
-            var sSafeFileName = this._escapeHtml(oAttachment.fileName || "");
-            var sSafeMessage = this._escapeHtml(oAttachment.message || "");
+            var sSafeFileName = Utils.escapeHtml(oAttachment.fileName || "");
+            var sSafeMessage = Utils.escapeHtml(oAttachment.message || "");
             var sIndeterminate = oAttachment.status === 'processing' ? 'indeterminate' : '';
 
             var sHtml = '<div class="fileCard" id="file-card-' + oAttachment.id + '">' +

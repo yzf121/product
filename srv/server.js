@@ -81,41 +81,6 @@ Object.entries(AI_APP_ID_MAP).forEach(([type, id]) => {
 // API请求超时时间（毫秒）
 const API_TIMEOUT = 60000;
 
-// session_id 配置常量
-const SESSION_CONFIG = {
-    MAX_ROUNDS: 50,
-    EXPIRE_HOURS: 1,
-    FALLBACK_ROUNDS: 10
-};
-
-
-
-// ===================== session_id 辅助函数 =====================
-
-function shouldUseSessionId(sessionId, sessionInfo) {
-    if (!sessionId || !sessionInfo) {
-        return false;
-    }
-
-    if (sessionInfo.roundCount >= SESSION_CONFIG.MAX_ROUNDS) {
-        console.log(`[AI] session_id 已达轮次上限 (${sessionInfo.roundCount}/${SESSION_CONFIG.MAX_ROUNDS})，切换到 messages 模式`);
-        return false;
-    }
-
-    if (sessionInfo.createdAt) {
-        const createdTime = new Date(sessionInfo.createdAt).getTime();
-        const now = Date.now();
-        const expireTime = SESSION_CONFIG.EXPIRE_HOURS * 60 * 60 * 1000;
-
-        if (now - createdTime > expireTime) {
-            console.log(`[AI] session_id 已过期（超过${SESSION_CONFIG.EXPIRE_HOURS}小时），切换到 messages 模式`);
-            return false;
-        }
-    }
-
-    return true;
-}
-
 // ===================== 端口检测辅助函数 =====================
 
 function isPortAvailable(port) {
@@ -152,9 +117,6 @@ async function findAvailablePort(startPort, maxAttempts = 10) {
 cds.on('bootstrap', (app) => {
     // JSON 解析中间件
     app.use('/api/chat/stream', express.json());
-    app.use('/api/files', express.json());
-
-
 
     // ==================== 流式聊天接口 ====================
 
@@ -162,7 +124,7 @@ cds.on('bootstrap', (app) => {
      * POST /api/chat/stream - 流式聊天（支持会话文件）
      */
     app.post('/api/chat/stream', async (req, res) => {
-        const { message, sessionId, aiType, messages, sessionInfo, sessionFileIds } = req.body;
+        const { message, sessionId, aiType, messages, sessionInfo } = req.body;
 
         if (!message) {
             return res.status(400).json({ error: '消息内容不能为空' });
@@ -185,7 +147,7 @@ cds.on('bootstrap', (app) => {
         res.setHeader('Connection', 'keep-alive');
         res.setHeader('Access-Control-Allow-Origin', '*');
 
-        const useSessionId = shouldUseSessionId(sessionId, sessionInfo);
+        const useSessionId = sessionId && sessionInfo;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
@@ -196,7 +158,7 @@ cds.on('bootstrap', (app) => {
             let requestBody;
 
             // 构建基础请求体
-            if (useSessionId && sessionId) {
+            if (useSessionId) {
                 console.log(`[AI] 使用 session_id 模式，轮次: ${sessionInfo?.roundCount || 0}`);
                 requestBody = {
                     input: {
@@ -229,8 +191,6 @@ cds.on('bootstrap', (app) => {
                     }
                 };
             }
-
-
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
