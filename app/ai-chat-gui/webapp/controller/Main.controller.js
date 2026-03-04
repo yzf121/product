@@ -246,10 +246,34 @@ sap.ui.define([
         },
 
         // 新建对话
-        onNewConversation: function () {
+        _ensureCurrentConversation: function (bSilent) {
+            var oModel = this.getView().getModel("chat");
+            var sCurrentId = oModel.getProperty("/currentConversationId");
+
+            if (sCurrentId) {
+                return sCurrentId;
+            }
+
+            var aPendingAttachments = oModel.getProperty("/attachments") || [];
+
+            this.onNewConversation(bSilent === undefined ? true : bSilent);
+            sCurrentId = oModel.getProperty("/currentConversationId");
+
+            if (aPendingAttachments.length > 0) {
+                var aRestoredAttachments = aPendingAttachments.slice();
+                oModel.setProperty("/attachments", aRestoredAttachments);
+                this._updateCurrentConversationAttachments(aRestoredAttachments);
+                this._renderAttachmentsFromModel();
+            }
+
+            return sCurrentId;
+        },
+
+        onNewConversation: function (vSilentFlag) {
             var oModel = this.getView().getModel("chat");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             var sCurrentAiType = oModel.getProperty("/currentAiType");
+            var bSilent = vSilentFlag === true;
 
             // 创建新对话（包含AI类型和会话信息）
             var oNewConversation = {
@@ -284,7 +308,9 @@ sap.ui.define([
             // 保存到localStorage
             this.getOwnerComponent().saveConversationsToStorage();
 
-            MessageToast.show(oI18n.getText("newConversationCreated"));
+            if (!bSilent) {
+                MessageToast.show(oI18n.getText("newConversationCreated"));
+            }
         },
 
 
@@ -465,18 +491,17 @@ sap.ui.define([
             oModel.setProperty("/inputValue", sMessage);
 
             // 确保有当前对话
-            var sCurrentId = oModel.getProperty("/currentConversationId");
-            if (!sCurrentId) {
-                this.onNewConversation();
-                sCurrentId = oModel.getProperty("/currentConversationId");
-            }
+            var sCurrentId = this._ensureCurrentConversation(true);
+            var oSendAttachmentPayload = this._extractReadyAttachmentsForSend();
 
             // 添加用户消息
             var oUserMessage = {
                 id: this._generateUUID(),
                 role: "user",
                 content: sMessage.trim(),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                attachments: oSendAttachmentPayload.attachments,
+                attachmentContext: oSendAttachmentPayload.contextText || ""
             };
 
             var aMessages = oModel.getProperty("/messages") || [];
@@ -515,7 +540,7 @@ sap.ui.define([
             this._scrollToBottom();
 
             // 调用AI接口（流式）
-            this._callAIStream(sMessage.trim(), oAIMessage.id);
+            this._callAIStream(sMessage.trim(), oAIMessage.id, oUserMessage.attachmentContext);
         },
 
 
@@ -531,7 +556,7 @@ sap.ui.define([
          * 调用AI流式接口（混合策略）
          * 优先使用 session_id（云端存储），失效时降级到 messages（本地历史）
          */
-        _callAIStream: function (sMessage, sMessageId) {
+        _callAIStream: function (sMessage, sMessageId, sAttachmentContext) {
             var that = this;
             var oModel = this.getView().getModel("chat");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
@@ -550,7 +575,7 @@ sap.ui.define([
             var sAiType = oModel.getProperty("/currentAiType");
 
             // 构建请求体（根据session状态决定使用哪种模式）
-            var oRequestBody = this._buildRequestBody(sMessage, sSessionId, oSessionInfo, aCurrentMessages, sAiType);
+            var oRequestBody = this._buildRequestBody(sMessage, sSessionId, oSessionInfo, aCurrentMessages, sAiType, sAttachmentContext);
 
             // 使用fetch进行流式请求
             fetch("/api/chat/stream", {
@@ -685,16 +710,48 @@ sap.ui.define([
             }
 
             // 用户消息：内容在左，头像在右（通过flex-direction: row-reverse实现）
+            var sAttachmentStripHtml = this._buildMessageAttachmentStripHtml(oMessage.attachments);
             var sHtml = '<div class="messageItem userMessage" id="user-msg-' + oMessage.id + '">' +
                 '<div class="avatarContainer">' +
                 '<span class="sapUiIcon userAvatar" style="font-family: SAP-icons">&#xe036;</span>' +
                 '</div>' +
                 '<div class="messageContent">' +
                 '<div class="messageText">' + this._escapeHtml(oMessage.content) + '</div>' +
+                sAttachmentStripHtml +
                 '</div>' +
                 '</div>';
 
             oDomRef.insertAdjacentHTML("beforeend", sHtml);
+        },
+
+        _buildMessageAttachmentStripHtml: function (aAttachments) {
+            if (!Array.isArray(aAttachments) || aAttachments.length === 0) {
+                return "";
+            }
+
+            var that = this;
+            var aChips = aAttachments.map(function (oAttachment) {
+                var sName = that._escapeHtml(oAttachment.fileName || "attachment");
+                var sExt = that._escapeHtml((oAttachment.fileExt || "").toUpperCase());
+                var sSize = oAttachment.fileSize ? that._escapeHtml(that._formatFileSize(oAttachment.fileSize)) : "";
+                var sMeta = "";
+
+                if (sSize && sExt) {
+                    sMeta = sSize + " · " + sExt;
+                } else if (sSize) {
+                    sMeta = sSize;
+                } else if (sExt) {
+                    sMeta = sExt;
+                }
+
+                return '<span class="messageAttachmentChip" title="' + sName + '">' +
+                    '<span class="chipPin"></span>' +
+                    '<span class="chipName">' + sName + '</span>' +
+                    (sMeta ? '<span class="chipMeta">' + sMeta + '</span>' : '') +
+                    '</span>';
+            });
+
+            return '<div class="messageAttachmentStrip">' + aChips.join("") + '</div>';
         },
 
         // 渲染AI消息容器（用于流式输出）
@@ -986,11 +1043,11 @@ sap.ui.define([
          * @param {string} sAiType AI类型
          * @returns {object} 请求体
          */
-        _buildRequestBody: function (sMessage, sSessionId, oSessionInfo, aMessages, sAiType) {
+        _buildRequestBody: function (sMessage, sSessionId, oSessionInfo, aMessages, sAiType, sAttachmentContext) {
             var bUseSessionId = this._shouldUseSessionId(sSessionId, oSessionInfo);
 
             // 获取已就绪的本地文件提取的纯文本内容
-            var sContextText = this._getReadySessionParsedTexts();
+            var sContextText = sAttachmentContext || this._getReadySessionParsedTexts();
             var sFinalMessage = sMessage;
 
             if (sContextText) {
@@ -1086,6 +1143,9 @@ sap.ui.define([
                 return msg.content;  // 过滤空内容
             }).map(function (msg) {
                 var sContent = msg.content;
+                if (msg.role === "user" && msg.attachmentContext) {
+                    sContent = "基于以下参考资料：\n\n" + msg.attachmentContext + "\n\n--- 资料结束 ---\n\n用户问题：\n" + sContent;
+                }
                 // AI回复截断，避免token过长
                 if (msg.role === "assistant" && sContent.length > 1000) {
                     sContent = sContent.substring(0, 1000) + "...";
@@ -1275,11 +1335,15 @@ sap.ui.define([
         _handleFileSelect: function (oEvent) {
             var that = this;
             var oFile = oEvent.target.files[0];
+            var oModel = this.getView().getModel("chat");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
 
             if (!oFile) {
                 return;
             }
+
+            // Ensure a conversation exists so attachments are retained for first message.
+            this._ensureCurrentConversation(true);
 
             // 验证文件大小
             if (oFile.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
@@ -1313,7 +1377,6 @@ sap.ui.define([
             };
 
             // 添加到附件列表
-            var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
             aAttachments.push(oAttachment);
             oModel.setProperty("/attachments", aAttachments);
@@ -1628,6 +1691,43 @@ sap.ui.define([
             } else {
                 return (nBytes / (1024 * 1024)).toFixed(1) + " MB";
             }
+        },
+
+        _extractReadyAttachmentsForSend: function () {
+            var oModel = this.getView().getModel("chat");
+            var aAttachments = oModel.getProperty("/attachments") || [];
+            var aReadyAttachments = [];
+            var aRemainingAttachments = [];
+            var aContextBlocks = [];
+
+            aAttachments.forEach(function (oAttachment) {
+                if (oAttachment.status === "ready") {
+                    aReadyAttachments.push({
+                        id: oAttachment.id,
+                        fileName: oAttachment.fileName,
+                        fileSize: oAttachment.fileSize,
+                        fileExt: oAttachment.fileExt
+                    });
+
+                    if (oAttachment.parsedText) {
+                        aContextBlocks.push("【文件：" + oAttachment.fileName + "】\n" + oAttachment.parsedText);
+                    }
+                } else {
+                    aRemainingAttachments.push(oAttachment);
+                }
+            });
+
+            if (aReadyAttachments.length > 0) {
+                oModel.setProperty("/attachments", aRemainingAttachments);
+                this._updateCurrentConversationAttachments(aRemainingAttachments);
+                this._renderAttachmentsFromModel();
+                this._updateAttachmentAreaVisibility();
+            }
+
+            return {
+                attachments: aReadyAttachments,
+                contextText: aContextBlocks.join("\n\n").trim()
+            };
         },
 
         /**

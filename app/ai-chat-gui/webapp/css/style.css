@@ -192,6 +192,61 @@ body,
     word-wrap: break-word;
 }
 
+.messageAttachmentStrip {
+    margin-top: 0.7rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.userMessage .messageAttachmentStrip {
+    justify-content: flex-end;
+}
+
+.messageAttachmentChip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    gap: 0.4rem;
+    border-radius: 999px;
+    padding: 0.18rem 0.6rem 0.18rem 0.3rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(6px);
+    font-size: 0.72rem;
+}
+
+.aiMessage .messageAttachmentChip {
+    border-color: rgba(0, 112, 173, 0.15);
+    background: #f2f8fc;
+}
+
+.chipPin {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffffff, #dbe9ff 65%, #8fb0da);
+    flex-shrink: 0;
+}
+
+.aiMessage .chipPin {
+    background: radial-gradient(circle at 30% 30%, #ffffff, #dceefe 65%, #8bb8de);
+}
+
+.chipName {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.chipMeta {
+    opacity: 0.85;
+    white-space: nowrap;
+    font-size: 0.68rem;
+}
+
 /* Markdown 内容优化 */
 .messageText p {
     margin: 0 0 0.8rem 0;
@@ -1588,5 +1643,9 @@ body,
     .uploadButton {
         width: 36px;
         height: 36px;
+    }
+
+    .chipName {
+        max-width: 140px;
     }
 }
