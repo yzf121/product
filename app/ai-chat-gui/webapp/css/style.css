@@ -83,6 +83,8 @@ body,
 /* 消息项动画 */
 .messageItem {
     display: flex;
+    align-items: flex-start;
+    /* 关键：当消息很长时，确保头像保持在顶部 */
     margin-bottom: 1.5rem;
     animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -299,6 +301,8 @@ body,
     margin: 0.8rem 0;
     border-radius: 8px;
     overflow: hidden;
+    position: relative;
+    /* 修复复制按钮飞出的关键 */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -355,111 +359,204 @@ body,
     color: white;
 }
 
+/* 整个消息级别的动作区域 */
+.messageActionArea {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+    opacity: 0;
+    /* 默认隐藏，悬浮显示 */
+    transition: opacity 0.2s;
+    position: relative;
+    z-index: 10;
+}
+
+.messageItem:hover .messageActionArea {
+    opacity: 1;
+}
+
+/* 消息级别的复制按钮 */
+.copyMessageBtn {
+    background-color: transparent;
+    color: #666;
+    border: none;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.copyMessageBtn:hover {
+    background-color: rgba(161, 0, 255, 0.1);
+    color: #A100FF;
+}
+
 
 /* ==================== 底部输入区域 ==================== */
 
-.inputArea {
-    flex-shrink: 0;
-    padding: 1.2rem 1.5rem;
-    background-color: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
-    /* 上浮阴影 */
+.inputAreaWrapper {
+    padding: 0 2rem 1.5rem 2rem;
+    background: transparent;
     z-index: 100;
 }
 
-.inputArea.sapMTB {
-    height: auto !important;
-    min-height: auto !important;
+.inputAreaGlass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 30px;
+    padding: 0.6rem 0.8rem 0.6rem 1.2rem;
+    /* Restore generous padding */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 60px;
+    align-items: flex-end !important;
+    /* Keep buttons at the bottom when expanding */
+    box-sizing: border-box;
 }
 
-/* 消息输入框 */
-.messageInput {
-    flex: 1 !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    margin-right: 0.75rem;
+.inputAreaGlass:focus-within {
+    box-shadow: 0 12px 40px rgba(161, 0, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(161, 0, 255, 0.3);
+    background: rgba(255, 255, 255, 0.85);
 }
 
-.messageInput textarea {
-    border: 1px solid #e0e0e0 !important;
-    border-radius: 12px !important;
-    padding: 0.8rem 1rem !important;
-    background-color: #f8f9fa !important;
-    transition: all 0.3s ease !important;
-    font-size: 0.95rem !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02) !important;
-}
-
-.messageInput textarea:focus {
-    border-color: #A100FF !important;
-    /* 聚焦时埃森哲紫 */
-    background-color: #ffffff !important;
-    box-shadow: 0 0 0 3px rgba(161, 0, 255, 0.1) !important;
-}
-
-.messageInput .sapMTextAreaInner {
-    border-radius: 12px !important;
-    width: 100% !important;
-}
-
-.inputArea .sapMTextArea {
-    width: 100% !important;
-}
-
-/* 发送按钮 - 严格圆形 */
-.sendButton {
+.uploadButtonGlass.sapMBtn {
+    margin-right: 0.5rem;
     border-radius: 50% !important;
-    width: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px !important;
-    height: 44px !important;
+    background: transparent !important;
+    border: none !important;
+    min-width: 40px !important;
+    flex-shrink: 0 !important;
+}
+
+.uploadButtonGlass .sapMBtnInner {
+    background: transparent !important;
+    border: none !important;
+    color: #666 !important;
+    width: 40px !important;
+    height: 40px !important;
     padding: 0 !important;
-    box-shadow: 0 4px 12px rgba(161, 0, 255, 0.3);
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
     display: flex !important;
     align-items: center;
     justify-content: center;
+    border-radius: 50% !important;
+    transition: all 0.2s ease !important;
 }
 
-.sendButton .sapMBtnInner {
+.uploadButtonGlass:hover .sapMBtnInner {
+    color: #A100FF !important;
+    background: rgba(161, 0, 255, 0.08) !important;
+}
+
+.messageInputGlass {
+    margin: 0 !important;
+    flex: 1 !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    height: auto !important;
+}
+
+/* UI5 渲染 TextArea 时会在外面包裹一层 div */
+.messageInputGlass.sapMTextArea {
+    min-height: 24px !important;
+}
+
+.messageInputGlass textarea {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+    color: #1a1a2e !important;
+    line-height: 1.5 !important;
+    resize: none !important;
+    box-sizing: border-box;
+    height: 100% !important;
+    /* allow it to scroll when exceeding max lines */
+    overflow-y: auto !important;
+}
+
+.messageInputGlass textarea:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* 覆盖 UI5 默认内部 wrapper 以防背景泄漏 */
+.messageInputGlass .sapMTextAreaInner {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0.4rem 0.2rem !important;
+    /* Move padding to the inner wrapper so text area scroll works correctly */
+}
+
+/* 发送按钮 - 严格圆形，移除方形泄漏 */
+.sendButtonGlass {
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    margin-left: 0.5rem;
     border-radius: 50% !important;
-    background: linear-gradient(135deg, #A100FF, #7c3aed) !important;
-    /* 紫色渐变 */
+    background: transparent !important;
     border: none !important;
     padding: 0 !important;
+    position: relative;
+    overflow: visible !important;
+    flex-shrink: 0 !important;
+}
+
+.sendButtonGlass .sapMBtnInner,
+.sendButtonGlass .sapMBtnHoverable,
+.sendButtonGlass .sapMBtnFocusable,
+.sendButtonGlass .sapMFocusable {
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #A100FF, #7c3aed) !important;
+    border: none !important;
+    outline: none !important;
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
     margin: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 12px rgba(161, 0, 255, 0.3) !important;
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s ease !important;
 }
 
-.sendButton .sapMBtnContent {
-    line-height: normal !important;
-    /* 重置行高 */
-    display: flex !important;
+/* 防止伪类创建残留边框 */
+.sendButtonGlass .sapMBtnInner::before,
+.sendButtonGlass .sapMBtnInner::after {
+    display: none !important;
 }
 
-.sendButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(161, 0, 255, 0.45);
+.sendButtonGlass:hover .sapMBtnInner {
+    transform: translateY(-2px) scale(1.05) !important;
+    box-shadow: 0 8px 20px rgba(161, 0, 255, 0.45) !important;
 }
 
-.sendButton:active {
-    transform: scale(0.92);
-    box-shadow: 0 2px 8px rgba(161, 0, 255, 0.2);
+.sendButtonGlass:active .sapMBtnInner {
+    transform: scale(0.95) !important;
+    box-shadow: 0 2px 8px rgba(161, 0, 255, 0.2) !important;
 }
 
-.sendButton .sapUiIcon {
+.sendButtonGlass .sapUiIcon {
     color: white !important;
-    font-size: 1.3rem !important;
-    /* 稍微加大图标 */
+    font-size: 1.25rem !important;
     line-height: normal !important;
     margin: 0 !important;
-    vertical-align: middle !important;
+    padding-right: 2px !important;
+    /* Visual centering for paper-plane */
 }
 
 /* ==================== 欢迎/空状态区域 ==================== */
@@ -478,6 +575,7 @@ body,
 .welcomeBox .sapMTitle {
     background: -webkit-linear-gradient(45deg, #A100FF, #0070AD);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     font-size: 2.5rem !important;
     font-weight: 800 !important;
@@ -631,7 +729,7 @@ body,
     left: 0;
     right: 0;
     bottom: 0;
-    height: auto !important;
+    height: 100% !important;
 }
 
 /* ScrollContainer 内部样式修复 */
@@ -697,6 +795,7 @@ body,
     letter-spacing: -0.5px;
     background: -webkit-linear-gradient(45deg, #A100FF, #460073);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -837,6 +936,7 @@ body,
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
 }
 

@@ -55,18 +55,11 @@
                                     <HBox justifyContent="End" class="sapUiSmallMarginTop">
                                         <Button
                                             id="generateBtn"
-                                            text="{i18n>generateDiagram}"
-                                            icon="sap-icon://create"
+                                            text="{= ${diagram>/hasMermaid} ? ${i18n>regenerateDiagram} : ${i18n>generateDiagram} }"
+                                            icon="{= ${diagram>/hasMermaid} ? 'sap-icon://refresh' : 'sap-icon://create' }"
                                             type="Emphasized"
                                             press="onGenerateDiagram"
-                                            enabled="{= !${diagram>/isLoading}}"
-                                            class="sapUiTinyMarginEnd"/>
-                                        <Button
-                                            text="{i18n>regenerateDiagram}"
-                                            icon="sap-icon://refresh"
-                                            press="onRegenerateDiagram"
-                                            enabled="{= !${diagram>/isLoading} &amp;&amp; ${diagram>/hasMermaid}}"
-                                            type="Transparent"/>
+                                            enabled="{= !${diagram>/isLoading}}"/>
                                     </HBox>
                                 </VBox>
                             </Panel>
@@ -136,31 +129,16 @@
                                 </items>
                             </SegmentedButton>
                             <ToolbarSeparator/>
-                            <Button
-                                icon="sap-icon://download"
-                                text="{i18n>downloadPNG}"
-                                press="onDownloadPNG"
-                                enabled="{diagram>/hasMermaid}"
-                                type="Transparent"/>
-                            <Button
-                                icon="sap-icon://attachment-html"
-                                text="{i18n>downloadSVG}"
-                                press="onDownloadSVG"
-                                enabled="{diagram>/hasMermaid}"
-                                type="Transparent"/>
-                            <Button
-                                icon="sap-icon://copy"
-                                text="{i18n>copyImage}"
-                                press="onCopyImage"
-                                enabled="{diagram>/hasMermaid}"
-                                type="Transparent"/>
-                            <ToolbarSeparator/>
-                            <Button
-                                icon="sap-icon://edit"
-                                text="{i18n>openInDrawio}"
-                                press="onOpenInDrawio"
-                                enabled="{diagram>/hasMermaid}"
-                                type="Emphasized"/>
+                            <MenuButton text="{i18n>exportParams}" icon="sap-icon://action" enabled="{diagram>/hasMermaid}" type="Transparent">
+                                <menu>
+                                    <Menu>
+                                        <MenuItem text="{i18n>downloadPNG}" icon="sap-icon://download" press="onDownloadPNG"/>
+                                        <MenuItem text="{i18n>downloadSVG}" icon="sap-icon://attachment-html" press="onDownloadSVG"/>
+                                        <MenuItem text="{i18n>copyImage}" icon="sap-icon://copy" press="onCopyImage"/>
+                                        <MenuItem text="{i18n>openInDrawio}" icon="sap-icon://edit" press="onOpenInDrawio"/>
+                                    </Menu>
+                                </menu>
+                            </MenuButton>
                             <ToolbarSeparator/>
                             <Button
                                 icon="sap-icon://zoom-in"

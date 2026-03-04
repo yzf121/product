@@ -284,13 +284,6 @@ sap.ui.define([
         },
 
         /**
-         * 重新生成流程图
-         */
-        onRegenerateDiagram: function () {
-            this.onGenerateDiagram();
-        },
-
-        /**
          * 调用架构图 AI 生成 Mermaid
          * @param {string} sPrompt 用户输入的描述
          * @param {boolean} bIsFixRequest 是否为修复请求

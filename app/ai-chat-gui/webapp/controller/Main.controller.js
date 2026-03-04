@@ -734,10 +734,52 @@ sap.ui.define([
                 '<div class="messageText" id="ai-text-' + sMessageId + '">' +
                 '<div class="typingIndicator"><span></span><span></span><span></span></div>' +
                 '</div>' +
+                '<div class="messageActionArea" id="ai-actions-' + sMessageId + '"></div>' +
                 '</div>' +
                 '</div>';
 
             oDomRef.insertAdjacentHTML("beforeend", sHtml);
+
+            // 附加整体消息复制按钮
+            var oActionArea = document.getElementById("ai-actions-" + sMessageId);
+            if (oActionArea) {
+                var oI18n = this.getView().getModel("i18n").getResourceBundle();
+                var sCopyText = oI18n.getText("copy");
+                var sCopiedText = oI18n.getText("copied");
+                var sCopyFailedText = oI18n.getText("copyFailed");
+
+                var oCopyMsgBtn = document.createElement("button");
+                oCopyMsgBtn.className = "copyMessageBtn";
+                oCopyMsgBtn.title = sCopyText;
+                // SAP-icons: &#xe0ec; (copy)
+                oCopyMsgBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
+
+                oCopyMsgBtn.onclick = function () {
+                    var sFullText = "";
+                    var oModel = that.getView().getModel("chat");
+                    var aMessages = oModel.getProperty("/messages") || [];
+                    var oTargetMessage = aMessages.find(function (msg) { return msg.id === sMessageId; });
+                    if (oTargetMessage && oTargetMessage.content) {
+                        sFullText = oTargetMessage.content;
+                    } else {
+                        var oTextEl = document.getElementById("ai-text-" + sMessageId);
+                        sFullText = oTextEl ? oTextEl.innerText : "";
+                    }
+
+                    if (sFullText) {
+                        Utils.copyTextToClipboard(sFullText).then(function () {
+                            oCopyMsgBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe05b;</span> ' + sCopiedText;
+                            setTimeout(function () {
+                                oCopyMsgBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
+                            }, 2000);
+                        }).catch(function () {
+                            MessageToast.show(sCopyFailedText);
+                        });
+                    }
+                };
+
+                oActionArea.appendChild(oCopyMsgBtn);
+            }
         },
 
         // 更新AI消息内容（流式）
