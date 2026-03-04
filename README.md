@@ -1,4 +1,5 @@
 # AI 助手平台
+<img width="1843" height="871" alt="image" src="https://github.com/user-attachments/assets/3a7db00e-80ff-471d-9658-7b3bc480a8a1" />
 
 > **版本**: v1.4.3  
 > **技术栈**: SAP CAP (Node.js) + SAP UI5 Freestyle + 阿里云百炼 AI
