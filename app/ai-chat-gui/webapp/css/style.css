@@ -701,6 +701,115 @@ body,
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+/* ==================== FSD转TSD助手 - 上下分离磁贴（纯HTML版） ==================== */
+
+/* 外层容器 - 与标准GenericTile完全一致的尺寸 */
+.fsd2tsdWrapper {
+    width: 11rem;
+    min-width: 200px;
+    height: 11rem;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    vertical-align: top;
+}
+
+/* 上下半块通用样式 */
+.fsd2tsdHalf {
+    flex: 1;
+    border-radius: 12px;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.fsd2tsdHalf:active {
+    transform: scale(0.97);
+}
+
+/* 上半部分 - 紫色调渐变 */
+.fsd2tsdTop {
+    background: linear-gradient(135deg, #7c3aed 0%, #A100FF 60%, #8b5cf6 100%);
+    border-radius: 12px 12px 4px 4px;
+}
+
+.fsd2tsdTop:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.5);
+}
+
+/* 下半部分 - 靛蓝调渐变 */
+.fsd2tsdBottom {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 60%, #3730a3 100%);
+    border-radius: 4px 4px 12px 12px;
+}
+
+.fsd2tsdBottom:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+}
+
+/* 内容布局 */
+.fsd2tsdContent {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    box-sizing: border-box;
+}
+
+/* 文字区域 */
+.fsd2tsdText {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.fsd2tsdTitle {
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.fsd2tsdSubtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-top: 2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 图标 */
+.fsd2tsdIcon {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 1.6rem !important;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+
+/* Focus 状态（键盘导航） */
+.fsd2tsdHalf:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: -2px;
+}
+
 /* 工具卡片样式 */
 .toolTile {
     background: linear-gradient(135deg, #0070AD 0%, #003366 100%) !important;

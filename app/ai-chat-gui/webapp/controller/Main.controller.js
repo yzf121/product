@@ -214,6 +214,8 @@ sap.ui.define([
                 "abap-clean-core": "abapCleanCoreTitle",
                 "cpi": "cpiAiTitle",
                 "func-doc": "funcDocAiTitle",
+                "fsd2tsd-i": "fsd2tsdITitle",
+                "fsd2tsd-e": "fsd2tsdETitle",
                 "tech-doc": "techDocAiTitle",
                 "code-review": "codeReviewTitle",
                 "unit-test": "unitTestTitle"
@@ -987,41 +989,40 @@ sap.ui.define([
         _buildRequestBody: function (sMessage, sSessionId, oSessionInfo, aMessages, sAiType) {
             var bUseSessionId = this._shouldUseSessionId(sSessionId, oSessionInfo);
 
-            // 获取已就绪的会话文件ID列表
-            var aSessionFileIds = this._getReadySessionFileIds();
+            // 获取已就绪的本地文件提取的纯文本内容
+            var sContextText = this._getReadySessionParsedTexts();
+            var sFinalMessage = sMessage;
 
-            if (aSessionFileIds.length > 0) {
-                console.log("[AI] 附带会话文件: " + aSessionFileIds.join(", "));
+            if (sContextText) {
+                sFinalMessage = "基于以下参考资料：\n\n" + sContextText + "\n\n--- 资料结束 ---\n\n用户问题：\n" + sMessage;
+                console.log("[AI] 附加了前端解析的本地上下文文本，长度: " + sContextText.length);
             }
 
             if (bUseSessionId) {
                 // 方案1：使用 session_id（云端存储，省token）
                 console.log("[AI] 使用 session_id 模式");
                 return {
-                    message: sMessage,  // 只发送当前消息
+                    message: sFinalMessage,
                     sessionId: sSessionId,
                     sessionInfo: oSessionInfo,
-                    aiType: sAiType,
-                    sessionFileIds: aSessionFileIds
+                    aiType: sAiType
                 };
             } else if (aMessages && aMessages.length > 2) {
                 // 方案2：使用 messages 数组（本地历史，降级方案）
                 console.log("[AI] 使用 messages 模式（降级）");
                 var aHistoryMessages = this._buildMessagesArray(aMessages);
                 return {
-                    message: sMessage,
+                    message: sFinalMessage,
                     messages: aHistoryMessages,
                     sessionInfo: oSessionInfo,
-                    aiType: sAiType,
-                    sessionFileIds: aSessionFileIds
+                    aiType: sAiType
                 };
             } else {
                 // 方案3：新对话
                 console.log("[AI] 新对话模式");
                 return {
-                    message: sMessage,
-                    aiType: sAiType,
-                    sessionFileIds: aSessionFileIds
+                    message: sFinalMessage,
+                    aiType: sAiType
                 };
             }
         },
@@ -1329,145 +1330,140 @@ sap.ui.define([
         },
 
         /**
-         * 上传文件到后端
+         * 动态加载外部 CDN 脚本
+         */
+        _loadScript: function (sUrl, sGlobalVar) {
+            return new Promise(function (resolve, reject) {
+                if (window[sGlobalVar]) {
+                    resolve(window[sGlobalVar]);
+                    return;
+                }
+                var script = document.createElement('script');
+                script.src = sUrl;
+                script.onload = function () { resolve(window[sGlobalVar]); };
+                script.onerror = function () { reject(new Error("加载脚本失败: " + sUrl)); };
+                document.head.appendChild(script);
+            });
+        },
+
+        /**
+         * 上传文件改为本地前端纯文本解析
          */
         _uploadFile: function (oAttachment) {
             var that = this;
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
 
-            var oFormData = new FormData();
-            oFormData.append("file", oAttachment.file);
+            that._updateAttachmentCard(oAttachment.id, {
+                status: 'processing',
+                progress: 50,
+                message: oI18n.getText("parsing") || "解析中..."
+            });
+            that._updateAttachmentInModel(oAttachment.id, {
+                status: 'processing'
+            });
 
-            // 模拟上传进度
-            var nProgress = 0;
-            var progressInterval = setInterval(function () {
-                if (nProgress < 90) {
-                    nProgress += 10;
+            this._parseFileLocally(oAttachment.file, oAttachment.fileExt)
+                .then(function (sParsedText) {
                     that._updateAttachmentCard(oAttachment.id, {
-                        progress: nProgress,
-                        status: 'uploading'
-                    });
-                }
-            }, 200);
-
-            fetch("/api/files/session", {
-                method: "POST",
-                body: oFormData
-            })
-                .then(function (response) {
-                    clearInterval(progressInterval);
-
-                    if (!response.ok) {
-                        return response.json().then(function (err) {
-                            throw new Error(err.error || "上传失败");
-                        });
-                    }
-                    return response.json();
-                })
-                .then(function (data) {
-                    // 上传成功，更新状态为处理中
-                    that._updateAttachmentCard(oAttachment.id, {
-                        fileId: data.fileId,
-                        status: 'processing',
+                        status: 'ready',
                         progress: 100,
-                        message: oI18n.getText("parsing") || "解析中..."
+                        message: oI18n.getText("ready") || "已就绪"
                     });
-
-                    // 更新模型中的附件数据
                     that._updateAttachmentInModel(oAttachment.id, {
-                        fileId: data.fileId,
-                        status: 'processing'
+                        status: 'ready',
+                        parsedText: sParsedText
                     });
-
-                    // 开始轮询文件状态
-                    that._pollFileStatus(oAttachment.id, data.fileId, 0);
+                    MessageToast.show(oAttachment.fileName + " " + (oI18n.getText("parseComplete") || "解析完成"));
                 })
                 .catch(function (error) {
-                    clearInterval(progressInterval);
-                    console.error("[FileUpload] 上传错误:", error);
-
+                    console.error("[FileParse] 前端解析错误:", error);
                     that._updateAttachmentCard(oAttachment.id, {
                         status: 'error',
                         progress: 0,
-                        message: error.message || "上传失败"
+                        message: error.message || "解析失败"
                     });
-
                     that._updateAttachmentInModel(oAttachment.id, {
                         status: 'error',
                         message: error.message
                     });
-
-                    MessageToast.show(error.message || "文件上传失败");
+                    MessageToast.show(error.message || "文件解析失败");
                 });
         },
 
         /**
-         * 轮询文件解析状态
+         * 纯前端本地解析：支持 txt, md, json, csv, xml, pdf, docx, xlsx, xls
          */
-        _pollFileStatus: function (sAttachmentId, sFileId, nAttempts) {
+        _parseFileLocally: function (oFile, sExt) {
             var that = this;
-            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+            return new Promise(function (resolve, reject) {
+                var reader = new FileReader();
 
-            if (nAttempts >= FILE_UPLOAD_CONFIG.MAX_POLL_ATTEMPTS) {
-                that._updateAttachmentCard(sAttachmentId, {
-                    status: 'error',
-                    message: oI18n.getText("parseTimeout") || "解析超时"
-                });
-                that._updateAttachmentInModel(sAttachmentId, {
-                    status: 'error',
-                    message: "解析超时"
-                });
-                return;
-            }
-
-            fetch("/api/files/session/" + sFileId + "/status")
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error("查询状态失败");
-                    }
-                    return response.json();
-                })
-                .then(function (data) {
-                    if (data.status === 'ready') {
-                        // 文件解析完成
-                        that._updateAttachmentCard(sAttachmentId, {
-                            status: 'ready',
-                            progress: 100,
-                            message: oI18n.getText("ready") || "已就绪"
-                        });
-                        that._updateAttachmentInModel(sAttachmentId, {
-                            status: 'ready'
-                        });
-                        MessageToast.show(data.fileName + " " + (oI18n.getText("parseComplete") || "解析完成"));
-                    } else if (data.status === 'error') {
-                        // 解析失败
-                        that._updateAttachmentCard(sAttachmentId, {
-                            status: 'error',
-                            message: data.message || "解析失败"
-                        });
-                        that._updateAttachmentInModel(sAttachmentId, {
-                            status: 'error',
-                            message: data.message
-                        });
-                    } else {
-                        // 还在处理中，继续轮询
-                        that._updateAttachmentCard(sAttachmentId, {
-                            status: 'processing',
-                            message: data.message || "解析中..."
-                        });
-
-                        setTimeout(function () {
-                            that._pollFileStatus(sAttachmentId, sFileId, nAttempts + 1);
-                        }, FILE_UPLOAD_CONFIG.POLL_INTERVAL);
-                    }
-                })
-                .catch(function (error) {
-                    console.error("[FileUpload] 轮询状态错误:", error);
-                    // 出错后继续尝试
-                    setTimeout(function () {
-                        that._pollFileStatus(sAttachmentId, sFileId, nAttempts + 1);
-                    }, FILE_UPLOAD_CONFIG.POLL_INTERVAL);
-                });
+                var textExtensions = ['txt', 'md', 'json', 'csv', 'xml'];
+                if (textExtensions.indexOf(sExt) !== -1) {
+                    reader.onload = function (e) { resolve(e.target.result); };
+                    reader.onerror = reject;
+                    reader.readAsText(oFile);
+                } else if (sExt === 'pdf') {
+                    that._loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js', 'pdfjsLib')
+                        .then(function (pdfjsLib) {
+                            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                            reader.onload = function (e) {
+                                var typedarray = new Uint8Array(e.target.result);
+                                pdfjsLib.getDocument(typedarray).promise.then(function (pdf) {
+                                    var maxPages = pdf.numPages;
+                                    var countPromises = [];
+                                    for (var j = 1; j <= maxPages; j++) {
+                                        countPromises.push(
+                                            pdf.getPage(j).then(function (page) {
+                                                return page.getTextContent().then(function (text) {
+                                                    return text.items.map(function (s) { return s.str; }).join('');
+                                                });
+                                            })
+                                        );
+                                    }
+                                    Promise.all(countPromises).then(function (texts) {
+                                        resolve(texts.join('\n'));
+                                    }).catch(reject);
+                                }).catch(reject);
+                            };
+                            reader.onerror = reject;
+                            reader.readAsArrayBuffer(oFile);
+                        }).catch(reject);
+                } else if (sExt === 'docx') {
+                    that._loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js', 'mammoth')
+                        .then(function (mammoth) {
+                            reader.onload = function (e) {
+                                var arrayBuffer = e.target.result;
+                                mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                                    .then(function (result) { resolve(result.value); })
+                                    .catch(reject);
+                            };
+                            reader.onerror = reject;
+                            reader.readAsArrayBuffer(oFile);
+                        }).catch(reject);
+                } else if (sExt === 'xlsx' || sExt === 'xls') {
+                    that._loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')
+                        .then(function (XLSX) {
+                            reader.onload = function (e) {
+                                var data = new Uint8Array(e.target.result);
+                                var workbook = XLSX.read(data, { type: 'array' });
+                                var sText = "";
+                                workbook.SheetNames.forEach(function (sheetName) {
+                                    var roa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                                    if (roa.length) {
+                                        var rowsText = roa.map(function (row) { return row.join(','); }).join('\n');
+                                        sText += "Sheet: " + sheetName + "\n" + rowsText + "\n\n";
+                                    }
+                                });
+                                resolve(sText);
+                            };
+                            reader.onerror = reject;
+                            reader.readAsArrayBuffer(oFile);
+                        }).catch(reject);
+                } else {
+                    reject(new Error("不支持在浏览器中直接解析此类型的文件: " + sExt));
+                }
+            });
         },
 
         /**
@@ -1635,19 +1631,19 @@ sap.ui.define([
         },
 
         /**
-         * 获取已就绪的会话文件ID列表
+         * 获取已就绪的本地会话文件所有的解析文本
          */
-        _getReadySessionFileIds: function () {
+        _getReadySessionParsedTexts: function () {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
+            var sContext = "";
 
-            return aAttachments
-                .filter(function (a) {
-                    return a.status === 'ready' && a.fileId && a.fileId.startsWith('file_session_');
-                })
-                .map(function (a) {
-                    return a.fileId;
-                });
+            aAttachments.forEach(function (a) {
+                if (a.status === 'ready' && a.parsedText) {
+                    sContext += "【文件：" + a.fileName + "】\n" + a.parsedText + "\n\n";
+                }
+            });
+            return sContext.trim();
         },
 
         /**

@@ -82,6 +82,30 @@
                         </customData>
                     </GenericTile>
                     
+                    <!-- FSD转TSD助手 - 上下分离设计（使用自定义HTML） -->
+                    <core:HTML id="fsd2tsdTile" content="
+                        &lt;div class='fsd2tsdWrapper sapUiSmallMarginEnd sapUiSmallMarginBottom'&gt;
+                            &lt;div class='fsd2tsdHalf fsd2tsdTop' id='fsd2tsdTileI' role='button' tabindex='0'&gt;
+                                &lt;div class='fsd2tsdContent'&gt;
+                                    &lt;div class='fsd2tsdText'&gt;
+                                        &lt;div class='fsd2tsdTitle'&gt;FSD转TSD（I）&lt;/div&gt;
+                                        &lt;div class='fsd2tsdSubtitle'&gt;Implementation&lt;/div&gt;
+                                    &lt;/div&gt;
+                                    &lt;span class='sapUiIcon fsd2tsdIcon' style='font-family: SAP-icons'&gt;&amp;#xe0ab;&lt;/span&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                            &lt;div class='fsd2tsdHalf fsd2tsdBottom' id='fsd2tsdTileE' role='button' tabindex='0'&gt;
+                                &lt;div class='fsd2tsdContent'&gt;
+                                    &lt;div class='fsd2tsdText'&gt;
+                                        &lt;div class='fsd2tsdTitle'&gt;FSD转TSD（E）&lt;/div&gt;
+                                        &lt;div class='fsd2tsdSubtitle'&gt;Enhancement&lt;/div&gt;
+                                    &lt;/div&gt;
+                                    &lt;span class='sapUiIcon fsd2tsdIcon' style='font-family: SAP-icons'&gt;&amp;#xe0ab;&lt;/span&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    "/>
+
                     <!-- Tech Doc AI -->
                     <GenericTile
                         header="{i18n>techDocAiTitle}"
