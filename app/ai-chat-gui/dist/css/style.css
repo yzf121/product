@@ -17,36 +17,45 @@ body,
     position: relative;
 }
 
-/* 顶部工具栏 - 新建对话按钮 */
-.newChatBtn {
+/* 顶部工具栏 - 新建对话按钮 (蓝色主题) */
+.newChatBtn,
+.newChatBtn.sapMBtn,
+.newChatBtn.sapMBtnTransparent {
     background: transparent !important;
-    border: 1px solid rgba(161, 0, 255, 0.3) !important;
+    border: none !important;
     border-radius: 20px !important;
-    /* 胶囊形状 */
-    height: 32px !important;
+    height: 36px !important;
     transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
-.newChatBtn .sapMBtnInner {
+.newChatBtn .sapMBtnInner,
+.newChatBtn.sapMBtn .sapMBtnInner {
+    background: rgba(0, 112, 173, 0.08) !important;
+    border: 1.5px solid #0070AD !important;
     border-radius: 20px !important;
-    padding: 0 12px !important;
+    padding: 0 16px !important;
+    box-shadow: none !important;
+    height: 100% !important;
 }
 
-.newChatBtn .sapMBtnContent {
-    color: #A100FF !important;
-    font-weight: 600 !important;
-}
-
-.newChatBtn .sapUiIcon {
-    color: #A100FF !important;
+.newChatBtn .sapUiIcon,
+.newChatBtn.sapMBtn .sapUiIcon {
+    color: #0070AD !important;
     font-size: 0.9rem !important;
-    margin-right: 4px !important;
+    margin-right: 6px !important;
 }
 
-.newChatBtn:hover {
-    background: rgba(161, 0, 255, 0.05) !important;
-    border-color: #A100FF !important;
-    box-shadow: 0 2px 8px rgba(161, 0, 255, 0.15);
+.newChatBtn:hover .sapMBtnInner,
+.newChatBtn.sapMBtn:hover .sapMBtnInner {
+    background: rgba(0, 112, 173, 0.15) !important;
+    border-color: #0070AD !important;
+}
+
+.newChatBtn:active .sapMBtnInner,
+.newChatBtn.sapMBtn:active .sapMBtnInner {
+    background: rgba(0, 112, 173, 0.2) !important;
 }
 
 /* 隐藏滚动条但保留功能 (Chrome/Safari) */
@@ -74,6 +83,8 @@ body,
 /* 消息项动画 */
 .messageItem {
     display: flex;
+    align-items: flex-start;
+    /* 关键：当消息很长时，确保头像保持在顶部 */
     margin-bottom: 1.5rem;
     animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -170,6 +181,22 @@ body,
     box-shadow: 0 4px 10px rgba(161, 0, 255, 0.25);
 }
 
+.avatarImage {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    object-fit: cover;
+    display: block;
+}
+
+.userAvatarImg {
+    box-shadow: 0 4px 10px rgba(0, 112, 173, 0.25);
+}
+
+.aiAvatarImg {
+    box-shadow: 0 4px 10px rgba(161, 0, 255, 0.25);
+}
+
 /* 消息内容排版 */
 .messageContent {
     max-width: 80%;
@@ -181,6 +208,61 @@ body,
 
 .messageText {
     word-wrap: break-word;
+}
+
+.messageAttachmentStrip {
+    margin-top: 0.7rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.userMessage .messageAttachmentStrip {
+    justify-content: flex-end;
+}
+
+.messageAttachmentChip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    gap: 0.4rem;
+    border-radius: 999px;
+    padding: 0.18rem 0.6rem 0.18rem 0.3rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(6px);
+    font-size: 0.72rem;
+}
+
+.aiMessage .messageAttachmentChip {
+    border-color: rgba(0, 112, 173, 0.15);
+    background: #f2f8fc;
+}
+
+.chipPin {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffffff, #dbe9ff 65%, #8fb0da);
+    flex-shrink: 0;
+}
+
+.aiMessage .chipPin {
+    background: radial-gradient(circle at 30% 30%, #ffffff, #dceefe 65%, #8bb8de);
+}
+
+.chipName {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.chipMeta {
+    opacity: 0.85;
+    white-space: nowrap;
+    font-size: 0.68rem;
 }
 
 /* Markdown 内容优化 */
@@ -235,6 +317,8 @@ body,
     margin: 0.8rem 0;
     border-radius: 8px;
     overflow: hidden;
+    position: relative;
+    /* 修复复制按钮飞出的关键 */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -291,111 +375,217 @@ body,
     color: white;
 }
 
+/* 整个消息级别的动作区域 */
+.messageActionArea {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+    opacity: 0;
+    /* 默认隐藏，悬浮显示 */
+    transition: opacity 0.2s;
+    position: relative;
+    z-index: 10;
+}
+
+.messageItem:hover .messageActionArea {
+    opacity: 1;
+}
+
+/* 消息级别的复制按钮 */
+.copyMessageBtn {
+    background-color: transparent;
+    color: #666;
+    border: none;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.copyMessageBtn:hover {
+    background-color: rgba(161, 0, 255, 0.1);
+    color: #A100FF;
+}
+
 
 /* ==================== 底部输入区域 ==================== */
 
-.inputArea {
-    flex-shrink: 0;
-    padding: 1.2rem 1.5rem;
-    background-color: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
-    /* 上浮阴影 */
+.inputAreaWrapper {
+    padding: 0 2rem 1.5rem 2rem;
+    background: transparent;
     z-index: 100;
 }
 
-.inputArea.sapMTB {
-    height: auto !important;
-    min-height: auto !important;
+.inputAreaGlass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 30px;
+    padding: 0.6rem 0.8rem 0.6rem 1.2rem;
+    /* Restore generous padding */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 60px;
+    align-items: flex-end !important;
+    /* Keep buttons at the bottom when expanding */
+    box-sizing: border-box;
 }
 
-/* 消息输入框 */
-.messageInput {
-    flex: 1 !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    margin-right: 0.75rem;
+.inputAreaGlass:focus-within {
+    box-shadow: 0 12px 40px rgba(161, 0, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(161, 0, 255, 0.3);
+    background: rgba(255, 255, 255, 0.85);
 }
 
-.messageInput textarea {
-    border: 1px solid #e0e0e0 !important;
-    border-radius: 12px !important;
-    padding: 0.8rem 1rem !important;
-    background-color: #f8f9fa !important;
-    transition: all 0.3s ease !important;
-    font-size: 0.95rem !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02) !important;
-}
-
-.messageInput textarea:focus {
-    border-color: #A100FF !important;
-    /* 聚焦时埃森哲紫 */
-    background-color: #ffffff !important;
-    box-shadow: 0 0 0 3px rgba(161, 0, 255, 0.1) !important;
-}
-
-.messageInput .sapMTextAreaInner {
-    border-radius: 12px !important;
-    width: 100% !important;
-}
-
-.inputArea .sapMTextArea {
-    width: 100% !important;
-}
-
-/* 发送按钮 - 严格圆形 */
-.sendButton {
+.uploadButtonGlass.sapMBtn {
+    margin-right: 0.5rem;
     border-radius: 50% !important;
-    width: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px !important;
-    height: 44px !important;
+    background: transparent !important;
+    border: none !important;
+    min-width: 40px !important;
+    flex-shrink: 0 !important;
+}
+
+.uploadButtonGlass .sapMBtnInner {
+    background: transparent !important;
+    border: none !important;
+    color: #666 !important;
+    width: 40px !important;
+    height: 40px !important;
     padding: 0 !important;
-    box-shadow: 0 4px 12px rgba(161, 0, 255, 0.3);
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
     display: flex !important;
     align-items: center;
     justify-content: center;
+    border-radius: 50% !important;
+    transition: all 0.2s ease !important;
 }
 
-.sendButton .sapMBtnInner {
-    border-radius: 50% !important;
-    background: linear-gradient(135deg, #A100FF, #7c3aed) !important;
-    /* 紫色渐变 */
+.uploadButtonGlass:hover .sapMBtnInner {
+    color: #A100FF !important;
+    background: rgba(161, 0, 255, 0.08) !important;
+}
+
+.messageInputGlass {
+    margin: 0 !important;
+    flex: 1 !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    height: auto !important;
+}
+
+/* UI5 渲染 TextArea 时会在外面包裹一层 div */
+.messageInputGlass.sapMTextArea {
+    min-height: 24px !important;
+}
+
+.messageInputGlass textarea {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+    color: #1a1a2e !important;
+    line-height: 1.5 !important;
+    resize: none !important;
+    box-sizing: border-box;
+    height: 100% !important;
+    /* allow it to scroll when exceeding max lines */
+    overflow-y: auto !important;
+}
+
+.messageInputGlass textarea:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* 覆盖 UI5 默认内部 wrapper 以防背景泄漏 */
+.messageInputGlass .sapMTextAreaInner {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0.4rem 0.2rem !important;
+    /* Move padding to the inner wrapper so text area scroll works correctly */
+}
+
+/* 发送按钮 - SAP风格 4:3 圆角长方形 */
+.sendButtonGlass {
+    width: 56px !important;
+    min-width: 56px !important;
+    height: 42px !important;
+    margin-left: 0.5rem;
+    border-radius: 10px !important;
+    background: transparent !important;
     border: none !important;
     padding: 0 !important;
+    position: relative;
+    overflow: visible !important;
+    flex-shrink: 0 !important;
+}
+
+.sendButtonGlass .sapMBtnInner,
+.sendButtonGlass .sapMBtnHoverable,
+.sendButtonGlass .sapMBtnFocusable,
+.sendButtonGlass .sapMFocusable {
+    border-radius: 10px !important;
+    background: var(--sapButton_Emphasized_Background, #0a6ed1) !important;
+    border: 1px solid var(--sapButton_Emphasized_BorderColor, #0854a0) !important;
+    outline: none !important;
+    width: 56px !important;
+    height: 42px !important;
+    padding: 0 !important;
     margin: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 8px rgba(10, 110, 209, 0.25) !important;
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s ease !important;
 }
 
-.sendButton .sapMBtnContent {
-    line-height: normal !important;
-    /* 重置行高 */
-    display: flex !important;
+/* 防止伪类创建残留边框 */
+.sendButtonGlass .sapMBtnInner::before,
+.sendButtonGlass .sapMBtnInner::after {
+    display: none !important;
 }
 
-.sendButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(161, 0, 255, 0.45);
+.sendButtonGlass:hover .sapMBtnInner {
+    background: var(--sapButton_Emphasized_Hover_Background, #0854a0) !important;
+    border-color: var(--sapButton_Emphasized_Hover_BorderColor, #0854a0) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(8, 84, 160, 0.28) !important;
 }
 
-.sendButton:active {
-    transform: scale(0.92);
-    box-shadow: 0 2px 8px rgba(161, 0, 255, 0.2);
+.sendButtonGlass:active .sapMBtnInner {
+    background: var(--sapButton_Emphasized_Active_Background, #0b5f9c) !important;
+    border-color: var(--sapButton_Emphasized_Active_BorderColor, #0b5f9c) !important;
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 4px rgba(8, 84, 160, 0.2) !important;
 }
 
-.sendButton .sapUiIcon {
+.sendButtonGlass.sapMBtnDisabled .sapMBtnInner {
+    background: var(--sapButton_Disabled_Background, #f7f7f7) !important;
+    border: 1px solid var(--sapButton_Disabled_BorderColor, #d9d9d9) !important;
+    box-shadow: none !important;
+}
+
+.sendButtonGlass .sapUiIcon {
     color: white !important;
-    font-size: 1.3rem !important;
-    /* 稍微加大图标 */
+    font-size: 1.1rem !important;
     line-height: normal !important;
     margin: 0 !important;
-    vertical-align: middle !important;
+    padding-right: 0 !important;
+}
+
+.sendButtonGlass.sapMBtnDisabled .sapUiIcon {
+    color: var(--sapButton_Disabled_TextColor, #999) !important;
 }
 
 /* ==================== 欢迎/空状态区域 ==================== */
@@ -414,6 +604,7 @@ body,
 .welcomeBox .sapMTitle {
     background: -webkit-linear-gradient(45deg, #A100FF, #0070AD);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     font-size: 2.5rem !important;
     font-weight: 800 !important;
@@ -476,83 +667,155 @@ body,
 /* ==================== 侧边栏 (对话历史) 样式 ==================== */
 
 #sidebarPage {
-    background-color: #fbfbfb !important;
-    border-right: 1px solid rgba(0, 0, 0, 0.06);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 100%),
+        radial-gradient(circle at 12% 0%, rgba(10, 110, 209, 0.05), transparent 40%) !important;
+    border-right: 1px solid rgba(10, 110, 209, 0.12);
+}
+
+#sidebarPage .sapMBar {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-bottom: 1px solid rgba(10, 110, 209, 0.1);
+    backdrop-filter: blur(8px);
+}
+
+#sidebarPage .sapMPageEnableScrolling {
+    padding: 0.2rem 0.35rem 0.5rem 0.35rem;
+}
+
+#conversationList {
+    background: transparent;
+}
+
+#conversationList .sapMListUl {
+    padding: 0.15rem 0.1rem 0.6rem 0.1rem;
 }
 
 /* 列表项基础样式 */
 #conversationList .sapMLIB {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.03) !important;
-    padding: 0.8rem 0.6rem !important;
-    transition: all 0.2s ease;
-    margin: 0.2rem 0.5rem;
-    border-radius: 8px;
-    background: transparent;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(10, 110, 209, 0.08) !important;
+    border-bottom-color: rgba(10, 110, 209, 0.1) !important;
+    padding: 0.8rem 0.64rem !important;
+    transition: background-color 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+    margin: 0.18rem 0.28rem;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(250, 252, 255, 0.76));
+    backdrop-filter: blur(4px);
+}
+
+#conversationList .sapMLIB::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.45rem;
+    bottom: 0.45rem;
+    width: 0;
+    border-radius: 0 6px 6px 0;
+    background: linear-gradient(180deg, #0a6ed1, #2f8deb);
+    opacity: 0;
+    transition: width 0.2s ease, opacity 0.2s ease;
 }
 
 /* 悬停效果 */
 #conversationList .sapMLIB:hover {
-    background-color: rgba(0, 112, 173, 0.06) !important;
-    /* 极淡蓝色 */
+    background-color: var(--sapList_Hover_Background, #ebf5ff) !important;
+    border-color: rgba(10, 110, 209, 0.22) !important;
+    box-shadow: 0 4px 14px rgba(10, 110, 209, 0.11);
+    transform: translateY(-1px);
+}
+
+#conversationList .sapMLIB:hover::before {
+    width: 3px;
+    opacity: 0.55;
 }
 
 /* 选中项样式 - 关键 */
 #conversationList .sapMLIBSelected {
-    background-color: rgba(161, 0, 255, 0.08) !important;
-    /* 极淡紫色 */
-    border-left: 4px solid #A100FF !important;
-    /* 紫色指示条 */
-    box-shadow: 0 2px 8px rgba(161, 0, 255, 0.08);
+    background-color: var(--sapList_SelectionBackgroundColor, #d1e8ff) !important;
+    border-color: rgba(10, 110, 209, 0.32) !important;
+    box-shadow: 0 6px 16px rgba(10, 110, 209, 0.16), inset 0 0 0 1px rgba(10, 110, 209, 0.08);
+    transform: translateY(-1px);
+}
+
+#conversationList .sapMLIBSelected::before {
+    width: 4px;
+    opacity: 1;
+}
+
+#conversationList .conversationItemRow {
+    margin: 0 !important;
+    gap: 0.45rem;
+}
+
+#conversationList .conversationTextBlock {
+    min-width: 0;
 }
 
 /* 列表标题 */
 .conversationTitle {
     font-weight: 600;
-    color: #1a1a2e;
-    font-size: 0.95rem;
+    color: #1c2b40;
+    font-size: 0.92rem;
+    line-height: 1.3;
+    letter-spacing: 0.12px;
 }
 
 /* 选中的标题变色 */
 #conversationList .sapMLIBSelected .conversationTitle {
-    color: #A100FF;
+    color: var(--sapBrandColor, #0a6ed1);
     font-weight: 700;
 }
 
 /* 元数据日期 */
 .conversationDate {
-    font-size: 0.75rem;
-    color: #888;
+    font-size: 0.74rem;
+    color: #5f7287;
+    letter-spacing: 0.08px;
+}
+
+#conversationList .conversationActions {
+    gap: 0.12rem;
+    margin-left: 0.3rem;
 }
 
 /* 操作按钮 - 隐式显示，增强质感 */
-#conversationList .sapMBtn {
+#conversationList .conversationActionBtn.sapMBtn {
     opacity: 0;
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
     border-radius: 8px !important;
-    margin-left: 4px;
+    min-width: 1.9rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    transform: translateY(2px);
 }
 
-#conversationList .sapMLIB:hover .sapMBtn {
-    opacity: 0.7;
+#conversationList .sapMLIB:hover .conversationActionBtn.sapMBtn {
+    opacity: 0.9;
+    transform: translateY(0);
 }
 
-#conversationList .sapMBtn:hover {
+#conversationList .sapMLIBSelected .conversationActionBtn.sapMBtn {
     opacity: 1;
-    background-color: rgba(161, 0, 255, 0.1) !important;
-    /* 悬停时淡淡的紫色背景 */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    /* 轻微浮起 */
+    transform: translateY(0);
+    background-color: rgba(10, 110, 209, 0.09) !important;
 }
 
-#conversationList .sapUiIcon {
-    font-size: 1rem;
-    color: #666;
-    /* 默认灰色图标 */
+#conversationList .conversationActionBtn.sapMBtn:hover {
+    opacity: 1;
+    background-color: rgba(10, 110, 209, 0.12) !important;
+    box-shadow: 0 2px 8px rgba(10, 110, 209, 0.1);
 }
 
-#conversationList .sapMBtn:hover .sapUiIcon {
-    color: #A100FF;
-    /* 悬停时变为紫色 */
+#conversationList .conversationActionBtn .sapUiIcon {
+    font-size: 0.98rem;
+    color: #5d7288;
+}
+
+#conversationList .conversationActionBtn.sapMBtn:hover .sapUiIcon {
+    color: var(--sapBrandColor, #0a6ed1);
 }
 
 /* 聊天页面内容区域高度修复 */
@@ -567,7 +830,7 @@ body,
     left: 0;
     right: 0;
     bottom: 0;
-    height: auto !important;
+    height: 100% !important;
 }
 
 /* ScrollContainer 内部样式修复 */
@@ -633,6 +896,7 @@ body,
     letter-spacing: -0.5px;
     background: -webkit-linear-gradient(45deg, #A100FF, #460073);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -690,6 +954,116 @@ body,
     transform: translateY(-6px);
     box-shadow: 0 12px 30px rgba(161, 0, 255, 0.4);
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* ==================== FSD转TSD助手 - 上下分离磁贴（纯HTML版） ==================== */
+
+/* 外层容器 - 与标准GenericTile完全一致的尺寸 */
+.fsd2tsdWrapper {
+    width: 11rem;
+    min-width: 200px;
+    height: 11rem;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    vertical-align: top;
+}
+
+/* 上下半块通用样式 */
+.fsd2tsdHalf {
+    flex: 1;
+    border-radius: 12px;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.fsd2tsdHalf:active {
+    transform: scale(0.97);
+}
+
+/* 上半部分 - 紫色调渐变 */
+.fsd2tsdTop {
+    background: linear-gradient(135deg, #7c3aed 0%, #A100FF 60%, #8b5cf6 100%);
+    border-radius: 12px 12px 4px 4px;
+}
+
+.fsd2tsdTop:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.5);
+}
+
+/* 下半部分 - 靛蓝调渐变 */
+.fsd2tsdBottom {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 60%, #3730a3 100%);
+    border-radius: 4px 4px 12px 12px;
+}
+
+.fsd2tsdBottom:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+}
+
+/* 内容布局 */
+.fsd2tsdContent {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    box-sizing: border-box;
+}
+
+/* 文字区域 */
+.fsd2tsdText {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.fsd2tsdTitle {
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.fsd2tsdSubtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-top: 2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 图标 */
+.fsd2tsdIcon {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 1.6rem !important;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+
+/* Focus 状态（键盘导航） */
+.fsd2tsdHalf:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: -2px;
 }
 
 /* 工具卡片样式 */
@@ -1070,45 +1444,6 @@ body,
     color: #ffffff !important;
 }
 
-/* 旧版样式保留兼容 */
-.drawioDialogCustom .sapMDialogSection {
-    padding: 0 !important;
-}
-
-.drawioDialogCustom .sapMDialogScroll {
-    height: 100% !important;
-}
-
-.drawioDialogHeader {
-    background-color: #1a1a2e !important;
-    border-bottom: none !important;
-}
-
-.drawioDialogHeader .sapMBarLeft,
-.drawioDialogHeader .sapMBarRight {
-    background-color: transparent !important;
-}
-
-.drawioDialogTitle {
-    color: #ffffff !important;
-    font-weight: 600 !important;
-}
-
-.drawioDialogHeader .sapMBtn {
-    color: #ffffff !important;
-}
-
-.drawioDialogHeader .sapMBtnTransparent .sapMBtnInner {
-    color: #ffffff !important;
-}
-
-.drawioDialogHeader .sapMBtnTransparent:hover .sapMBtnInner {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.drawioDialogHeader .sapUiIcon {
-    color: #ffffff !important;
-}
 
 .drawioTipBar {
     background-color: #fff3cd !important;
@@ -1470,5 +1805,9 @@ body,
     .uploadButton {
         width: 36px;
         height: 36px;
+    }
+
+    .chipName {
+        max-width: 140px;
     }
 }

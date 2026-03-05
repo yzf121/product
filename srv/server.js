@@ -80,6 +80,7 @@ Object.entries(AI_APP_ID_MAP).forEach(([type, id]) => {
 
 // API请求超时时间（毫秒）
 const API_TIMEOUT = 60000;
+const CHAT_REQUEST_LIMIT = process.env.CHAT_REQUEST_LIMIT || '20mb';
 
 // ===================== 端口检测辅助函数 =====================
 
@@ -116,7 +117,22 @@ async function findAvailablePort(startPort, maxAttempts = 10) {
 
 cds.on('bootstrap', (app) => {
     // JSON 解析中间件
-    app.use('/api/chat/stream', express.json());
+    app.use('/api/chat/stream', express.json({ limit: CHAT_REQUEST_LIMIT }));
+    app.use('/api/chat/stream', (err, _req, res, next) => {
+        if (!err) {
+            return next();
+        }
+
+        if (err.type === 'entity.too.large') {
+            return res.status(413).json({ error: '请求内容过大，请减少单次发送内容后重试' });
+        }
+
+        if (err instanceof SyntaxError) {
+            return res.status(400).json({ error: '请求体 JSON 格式错误' });
+        }
+
+        return next(err);
+    });
 
     // ==================== 流式聊天接口 ====================
 
@@ -130,29 +146,70 @@ cds.on('bootstrap', (app) => {
             return res.status(400).json({ error: '消息内容不能为空' });
         }
 
-        const appId = getAppIdByType(aiType);
-        const apiKey = getApiKeyByType(aiType);
-
-        if (!appId || !apiKey) {
-            res.write(`data: ${JSON.stringify({ error: 'AI服务配置不完整，请联系管理员' })}\n\n`);
-            res.end();
-            return;
-        }
-
-        const apiUrl = buildApiUrl(appId);
-
         // 设置SSE响应头
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
         res.setHeader('Access-Control-Allow-Origin', '*');
+        if (typeof res.flushHeaders === 'function') {
+            res.flushHeaders();
+        }
 
-        const useSessionId = sessionId && sessionInfo;
+        const safeWrite = (payload) => {
+            if (res.writableEnded || res.destroyed) {
+                return false;
+            }
+            try {
+                res.write(`data: ${JSON.stringify(payload)}\n\n`);
+                return true;
+            } catch (writeError) {
+                console.error('[AI] SSE 写入失败:', writeError);
+                return false;
+            }
+        };
+
+        const safeWriteDone = () => {
+            if (res.writableEnded || res.destroyed) {
+                return false;
+            }
+            try {
+                res.write('data: [DONE]\n\n');
+                return true;
+            } catch (writeError) {
+                console.error('[AI] SSE DONE 写入失败:', writeError);
+                return false;
+            }
+        };
+
+        const safeEnd = () => {
+            if (!res.writableEnded && !res.destroyed) {
+                res.end();
+            }
+        };
+
+        const appId = getAppIdByType(aiType);
+        const apiKey = getApiKeyByType(aiType);
+
+        if (!appId || !apiKey) {
+            safeWrite({ error: 'AI服务配置不完整，请联系管理员' });
+            safeEnd();
+            return;
+        }
+
+        const apiUrl = buildApiUrl(appId);
+
+        const useSessionId = Boolean(sessionId);
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort();
         }, API_TIMEOUT);
+        let clientDisconnected = false;
+        const handleClientClose = () => {
+            clientDisconnected = true;
+            controller.abort();
+        };
+        res.once('close', handleClientClose);
 
         try {
             let requestBody;
@@ -205,62 +262,111 @@ cds.on('bootstrap', (app) => {
 
             clearTimeout(timeoutId);
 
+            if (clientDisconnected) {
+                safeEnd();
+                return;
+            }
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('百炼API错误:', errorText);
-                res.write(`data: ${JSON.stringify({ error: 'AI服务调用失败' })}\n\n`);
-                res.end();
+                safeWrite({ error: 'AI服务调用失败' });
+                safeEnd();
                 return;
             }
 
             if (!response.body) {
                 console.error('响应体不支持流式读取');
-                res.write(`data: ${JSON.stringify({ error: '服务器不支持流式响应' })}\n\n`);
-                res.end();
+                safeWrite({ error: '服务器不支持流式响应' });
+                safeEnd();
                 return;
             }
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let sseBuffer = '';
+
+            const processEventBlock = (eventBlock) => {
+                const dataLines = eventBlock
+                    .split('\n')
+                    .filter((line) => line.startsWith('data:'))
+                    .map((line) => line.slice(5).trim());
+
+                if (!dataLines.length) {
+                    return;
+                }
+
+                const payload = dataLines.join('\n').trim();
+                if (!payload || payload === '[DONE]') {
+                    return;
+                }
+
+                try {
+                    const data = JSON.parse(payload);
+                    if (data.output && data.output.text) {
+                        safeWrite({ text: data.output.text, sessionId: data.output.session_id });
+                    }
+                } catch (e) {
+                    // 仅记录异常帧，继续处理后续内容
+                    console.warn('[AI] 无法解析上游SSE分片:', e.message);
+                }
+            };
+
+            const flushSSEBuffer = (forceFlush = false) => {
+                let normalized = sseBuffer.replace(/\r\n/g, '\n');
+                let boundaryIndex = normalized.indexOf('\n\n');
+
+                while (boundaryIndex !== -1) {
+                    const eventBlock = normalized.slice(0, boundaryIndex);
+                    normalized = normalized.slice(boundaryIndex + 2);
+                    processEventBlock(eventBlock);
+                    boundaryIndex = normalized.indexOf('\n\n');
+                }
+
+                if (forceFlush && normalized.trim()) {
+                    processEventBlock(normalized);
+                    normalized = '';
+                }
+
+                sseBuffer = normalized;
+            };
 
             while (true) {
+                if (clientDisconnected) {
+                    break;
+                }
+
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-
-                for (const line of lines) {
-                    if (line.startsWith('data:')) {
-                        const jsonStr = line.slice(5).trim();
-                        if (jsonStr) {
-                            try {
-                                const data = JSON.parse(jsonStr);
-                                if (data.output && data.output.text) {
-                                    res.write(`data: ${JSON.stringify({ text: data.output.text, sessionId: data.output.session_id })}\n\n`);
-                                }
-                            } catch (e) {
-                                // 忽略解析错误
-                            }
-                        }
-                    }
-                }
+                sseBuffer += decoder.decode(value, { stream: true });
+                flushSSEBuffer(false);
             }
 
-            res.write('data: [DONE]\n\n');
-            res.end();
+            if (!clientDisconnected) {
+                sseBuffer += decoder.decode();
+                flushSSEBuffer(true);
+                safeWriteDone();
+            }
+
+            safeEnd();
 
         } catch (error) {
             clearTimeout(timeoutId);
 
-            if (error.name === 'AbortError') {
+            if (error.name === 'AbortError' && clientDisconnected) {
+                console.log('[AI] 客户端已断开，终止上游请求');
+            } else if (error.name === 'AbortError') {
                 console.error('API请求超时');
-                res.write(`data: ${JSON.stringify({ error: 'AI服务响应超时，请稍后重试' })}\n\n`);
+                safeWrite({ error: 'AI服务响应超时，请稍后重试' });
             } else {
                 console.error('流式响应错误:', error);
-                res.write(`data: ${JSON.stringify({ error: '服务器内部错误' })}\n\n`);
+                safeWrite({ error: '服务器内部错误' });
             }
-            res.end();
+            safeEnd();
+        } finally {
+            clearTimeout(timeoutId);
+            res.removeListener('close', handleClientClose);
         }
     });
 

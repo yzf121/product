@@ -25,6 +25,13 @@ sap.ui.define([
          * 控制器初始化
          */
         onInit: function () {
+            this._isExiting = false;
+            this._pendingTimeouts = new Set();
+            this._oActiveDiagramRequestController = null;
+            this._cleanupPreviewInteractions = null;
+            this._fnDrawioCopyHandler = null;
+            this._drawioCopyTimeout = null;
+
             // 初始化 Diagram 数据模型
             var oDiagramModel = new JSONModel({
                 inputValue: "",
@@ -103,6 +110,41 @@ sap.ui.define([
             }
         },
 
+        _setManagedTimeout: function (fnCallback, nDelay) {
+            var that = this;
+            var iTimer = setTimeout(function () {
+                that._pendingTimeouts.delete(iTimer);
+                if (that._isExiting) {
+                    return;
+                }
+                fnCallback();
+            }, nDelay);
+            this._pendingTimeouts.add(iTimer);
+            return iTimer;
+        },
+
+        _clearManagedTimeout: function (iTimer) {
+            if (!iTimer) {
+                return;
+            }
+            clearTimeout(iTimer);
+            this._pendingTimeouts.delete(iTimer);
+        },
+
+        _clearAllManagedTimeouts: function () {
+            this._pendingTimeouts.forEach(function (iTimer) {
+                clearTimeout(iTimer);
+            });
+            this._pendingTimeouts.clear();
+        },
+
+        _abortActiveDiagramRequest: function () {
+            if (this._oActiveDiagramRequestController) {
+                this._oActiveDiagramRequestController.abort();
+                this._oActiveDiagramRequestController = null;
+            }
+        },
+
         /**
          * 初始化预览区域
          */
@@ -123,7 +165,7 @@ sap.ui.define([
                 // DOM 未准备好，延迟重试
                 var that = this;
                 this._bPreviewInitializing = true;
-                setTimeout(function () {
+                this._setManagedTimeout(function () {
                     that._bPreviewInitializing = false;
                     that._initPreviewArea();
                 }, 100);
@@ -179,11 +221,17 @@ sap.ui.define([
             var oPreviewArea = this._oPreviewArea;
             if (!oPreviewArea) return;
 
+            if (this._cleanupPreviewInteractions) {
+                this._cleanupPreviewInteractions();
+                this._cleanupPreviewInteractions = null;
+            }
+
             var isDragging = false;
             var startX, startY, scrollLeft, scrollTop;
-
-            // 鼠标按下
-            oPreviewArea.addEventListener("mousedown", function (e) {
+            var onMouseDown = function (e) {
+                if (that._isExiting) {
+                    return;
+                }
                 // 只在 SVG 区域启用拖拽
                 if (e.target.closest("svg") || e.target.closest(".mermaidContentWrapper")) {
                     isDragging = true;
@@ -194,10 +242,9 @@ sap.ui.define([
                     scrollTop = oPreviewArea.scrollTop;
                     e.preventDefault();
                 }
-            });
+            };
 
-            // 鼠标移动
-            oPreviewArea.addEventListener("mousemove", function (e) {
+            var onMouseMove = function (e) {
                 if (!isDragging) return;
                 e.preventDefault();
                 var x = e.pageX - oPreviewArea.offsetLeft;
@@ -206,20 +253,18 @@ sap.ui.define([
                 var walkY = (y - startY) * 1.5;
                 oPreviewArea.scrollLeft = scrollLeft - walkX;
                 oPreviewArea.scrollTop = scrollTop - walkY;
-            });
+            };
 
-            // 鼠标释放
-            document.addEventListener("mouseup", function () {
+            var onMouseUp = function () {
                 if (isDragging) {
                     isDragging = false;
                     if (oPreviewArea) {
                         oPreviewArea.style.cursor = "grab";
                     }
                 }
-            });
+            };
 
-            // 滚轮缩放（Ctrl + 滚轮）
-            oPreviewArea.addEventListener("wheel", function (e) {
+            var onWheel = function (e) {
                 if (e.ctrlKey) {
                     e.preventDefault();
                     if (e.deltaY < 0) {
@@ -228,13 +273,26 @@ sap.ui.define([
                         that.onZoomOut();
                     }
                 }
-            }, { passive: false });
+            };
+
+            oPreviewArea.addEventListener("mousedown", onMouseDown);
+            oPreviewArea.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+            oPreviewArea.addEventListener("wheel", onWheel, { passive: false });
+
+            this._cleanupPreviewInteractions = function () {
+                oPreviewArea.removeEventListener("mousedown", onMouseDown);
+                oPreviewArea.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+                oPreviewArea.removeEventListener("wheel", onWheel);
+            };
         },
 
         /**
          * 返回首页
          */
         onNavBack: function () {
+            this._abortActiveDiagramRequest();
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("home");
         },
@@ -261,7 +319,7 @@ sap.ui.define([
             if (!this._oContentWrapper) {
                 this._initPreviewArea();
                 // 延迟执行，等待初始化完成
-                setTimeout(function () {
+                this._setManagedTimeout(function () {
                     that.onGenerateDiagram();
                 }, 200);
                 return;
@@ -309,6 +367,19 @@ sap.ui.define([
             }
 
             var sFullContent = "";
+            this._abortActiveDiagramRequest();
+            var oAbortController = new AbortController();
+            this._oActiveDiagramRequestController = oAbortController;
+
+            var finalizeRequest = function () {
+                if (that._oActiveDiagramRequestController !== oAbortController) {
+                    return;
+                }
+                that._oActiveDiagramRequestController = null;
+                if (!that._isExiting) {
+                    oModel.setProperty("/isLoading", false);
+                }
+            };
 
             // 调用流式 API
             fetch("/api/chat/stream", {
@@ -316,7 +387,8 @@ sap.ui.define([
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(oRequestBody)
+                body: JSON.stringify(oRequestBody),
+                signal: oAbortController.signal
             }).then(function (response) {
                 if (!response.ok) {
                     throw new Error(that._getI18nText("networkError"));
@@ -342,18 +414,28 @@ sap.ui.define([
                         }
                     },
                     onDone: function () {
+                        if (that._isExiting) {
+                            finalizeRequest();
+                            return;
+                        }
                         that._processAIResponse(sFullContent, bIsFixRequest);
-                        oModel.setProperty("/isLoading", false);
+                        finalizeRequest();
                     },
                     onError: function (error) {
                         console.error("[Diagram] 流读取错误:", error);
-                        oModel.setProperty("/isLoading", false);
+                        finalizeRequest();
                     }
                 });
             }).catch(function (error) {
+                if (error && error.name === "AbortError") {
+                    finalizeRequest();
+                    return;
+                }
                 console.error("[Diagram] AI 调用错误:", error);
-                MessageToast.show(that._getI18nText("aiServiceUnavailable"));
-                oModel.setProperty("/isLoading", false);
+                if (!that._isExiting) {
+                    MessageToast.show(that._getI18nText("aiServiceUnavailable"));
+                }
+                finalizeRequest();
             });
         },
 
@@ -545,7 +627,7 @@ sap.ui.define([
             // 确保预览区域存在
             if (!this._oContentWrapper) {
                 this._initPreviewArea();
-                setTimeout(function () {
+                this._setManagedTimeout(function () {
                     that._renderMermaid(sMermaidCode);
                 }, 200);
                 return;
@@ -789,7 +871,9 @@ sap.ui.define([
             var sUrl = URL.createObjectURL(oBlob);
 
             this._downloadFile(sUrl, "diagram-" + Date.now() + ".svg");
-            URL.revokeObjectURL(sUrl);
+            this._setManagedTimeout(function () {
+                URL.revokeObjectURL(sUrl);
+            }, 1000);
 
             MessageToast.show(this._getI18nText("downloadStarted"));
         },
@@ -912,7 +996,7 @@ sap.ui.define([
                     that._bDrawioLoading = false;
                     // 加载完成后打开
                     oDialog.open();
-                    setTimeout(function () {
+                    that._setManagedTimeout(function () {
                         that._initDrawioEmbed();
                     }, 300);
                 }).catch(function (err) {
@@ -930,7 +1014,7 @@ sap.ui.define([
             // 已加载过，直接打开
             this._oDrawioDialog.open();
 
-            setTimeout(function () {
+            this._setManagedTimeout(function () {
                 that._initDrawioEmbed();
             }, 300);
         },
@@ -947,7 +1031,7 @@ sap.ui.define([
 
             var oDomRef = oIframeBox.getDomRef();
             if (!oDomRef) {
-                setTimeout(function () { that._initDrawioEmbed(); }, 200);
+                this._setManagedTimeout(function () { that._initDrawioEmbed(); }, 200);
                 return;
             }
 
@@ -972,6 +1056,11 @@ sap.ui.define([
                 "&noExitBtn=1";         // 隐藏退出按钮（我们有自己的关闭按钮）
 
             oIframe.src = sUrl;
+
+            if (this._fnDrawioHandler) {
+                window.removeEventListener("message", this._fnDrawioHandler);
+                this._fnDrawioHandler = null;
+            }
 
             // 监听 Draw.io 消息
             this._fnDrawioHandler = function (event) {
@@ -1074,12 +1163,14 @@ sap.ui.define([
             var that = this;
             if (!this._oDrawioIframe || !this._oDrawioIframe.contentWindow) return;
 
+            this._clearDrawioCopyHandler();
+
             var fnHandler = function (event) {
                 if (event.origin !== "https://embed.diagrams.net") return;
                 try {
                     var msg = JSON.parse(event.data);
                     if (msg.event === "export" && msg.format === "png" && msg.data) {
-                        window.removeEventListener("message", fnHandler);
+                        that._clearDrawioCopyHandler();
                         fetch(msg.data)
                             .then(function (r) { return r.blob(); })
                             .then(function (blob) {
@@ -1094,17 +1185,34 @@ sap.ui.define([
                     }
                 } catch (e) { }
             };
-            window.addEventListener("message", fnHandler);
+            this._fnDrawioCopyHandler = fnHandler;
+            window.addEventListener("message", this._fnDrawioCopyHandler);
+            this._drawioCopyTimeout = this._setManagedTimeout(function () {
+                that._clearDrawioCopyHandler();
+                MessageToast.show(that._getI18nText("copyImageFailed"));
+            }, 10000);
 
             this._oDrawioIframe.contentWindow.postMessage(JSON.stringify({
                 action: "export", format: "png", scale: 2, background: "#ffffff"
             }), "*");
         },
 
+        _clearDrawioCopyHandler: function () {
+            if (this._fnDrawioCopyHandler) {
+                window.removeEventListener("message", this._fnDrawioCopyHandler);
+                this._fnDrawioCopyHandler = null;
+            }
+            if (this._drawioCopyTimeout) {
+                this._clearManagedTimeout(this._drawioCopyTimeout);
+                this._drawioCopyTimeout = null;
+            }
+        },
+
         /**
          * 关闭 Draw.io
          */
         onCloseDrawio: function () {
+            this._clearDrawioCopyHandler();
             if (this._oDrawioDialog) {
                 this._oDrawioDialog.close();
             }
@@ -1138,7 +1246,22 @@ sap.ui.define([
          * 控制器销毁
          */
         onExit: function () {
-            // 清理资源
+            this._isExiting = true;
+            this._abortActiveDiagramRequest();
+            this._clearAllManagedTimeouts();
+            this._clearDrawioCopyHandler();
+
+            if (this._cleanupPreviewInteractions) {
+                this._cleanupPreviewInteractions();
+                this._cleanupPreviewInteractions = null;
+            }
+
+            this.onCloseDrawio();
+
+            if (this._oDrawioDialog) {
+                this._oDrawioDialog.destroy();
+                this._oDrawioDialog = null;
+            }
         }
     });
 });

@@ -37,10 +37,21 @@ sap.ui.define([
         onInit: function () {
             // 控制器初始化
             // 布局已在视图中设置为TwoColumnsMidExpanded
+            this._isExiting = false;
+            this._pendingTimeouts = new Set();
+            this._oActiveStreamController = null;
+            this._fnMessageInputKeydown = null;
+            this._oBoundTextAreaElement = null;
+            this._fnFileInputChange = null;
+            this._oBoundFileInput = null;
+            this._bSidebarWidthCustomized = false;
+            this._fnSidebarPointerDown = null;
+            this._oSidebarDomRef = null;
 
             // 监听路由匹配事件，获取AI类型参数
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.getRoute("chat").attachPatternMatched(this._onRouteMatched, this);
+            this._oChatRoute = oRouter.getRoute("chat");
+            this._oChatRoute.attachPatternMatched(this._onRouteMatched, this);
         },
         _syncWelcomeBoxAfterRender: function () {
             var oModel = this.getView().getModel("chat");
@@ -62,6 +73,13 @@ sap.ui.define([
             this._bindFileInputChange();
             this._renderAttachmentsFromModel();
             this._syncWelcomeBoxAfterRender();
+            this._bindSidebarResizeIntent();
+            this._applySidebarColumnWidth();
+
+            if (!this._fnSidebarResizeHandler) {
+                this._fnSidebarResizeHandler = this._applySidebarColumnWidth.bind(this);
+                window.addEventListener("resize", this._fnSidebarResizeHandler);
+            }
         },
 
         /**
@@ -69,12 +87,6 @@ sap.ui.define([
          * Enter 发送消息，Shift+Enter 换行
          */
         _bindKeyboardShortcut: function () {
-            // 防止重复绑定
-            if (this._bKeyboardBound) {
-                return;
-            }
-
-            var that = this;
             var oTextArea = this.byId("messageInput");
 
             if (oTextArea && oTextArea.getDomRef()) {
@@ -82,16 +94,31 @@ sap.ui.define([
                 var oTextAreaElement = oDomRef.querySelector("textarea");
 
                 if (oTextAreaElement) {
-                    oTextAreaElement.addEventListener("keydown", function (oEvent) {
-                        // Enter 发送消息（不按 Shift）
-                        if (oEvent.key === "Enter" && !oEvent.shiftKey) {
-                            oEvent.preventDefault();
-                            oEvent.stopPropagation();
-                            that.onSendMessage();
-                        }
-                        // Shift+Enter 换行（默认行为，不需要处理）
-                    }, true);  // 使用捕获阶段
-                    this._bKeyboardBound = true;
+                    // DOM 重新创建后，先解绑旧元素上的监听器再绑定新元素
+                    if (this._oBoundTextAreaElement && this._oBoundTextAreaElement !== oTextAreaElement && this._fnMessageInputKeydown) {
+                        this._oBoundTextAreaElement.removeEventListener("keydown", this._fnMessageInputKeydown, true);
+                        this._oBoundTextAreaElement = null;
+                    }
+
+                    if (this._oBoundTextAreaElement === oTextAreaElement && this._fnMessageInputKeydown) {
+                        return;
+                    }
+
+                    if (!this._fnMessageInputKeydown) {
+                        var that = this;
+                        this._fnMessageInputKeydown = function (oEvent) {
+                            // Enter 发送消息（不按 Shift）
+                            if (oEvent.key === "Enter" && !oEvent.shiftKey) {
+                                oEvent.preventDefault();
+                                oEvent.stopPropagation();
+                                that.onSendMessage();
+                            }
+                            // Shift+Enter 换行（默认行为，不需要处理）
+                        };
+                    }
+
+                    oTextAreaElement.addEventListener("keydown", this._fnMessageInputKeydown, true);
+                    this._oBoundTextAreaElement = oTextAreaElement;
                 }
             }
         },
@@ -105,6 +132,11 @@ sap.ui.define([
             var oModel = this.getView().getModel("chat");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             var sPreviousAiType = oModel.getProperty("/currentAiType");
+
+            if (oModel.getProperty("/isLoading")) {
+                this._abortActiveStreamRequest();
+                oModel.setProperty("/isLoading", false);
+            }
 
             // 初始化附件数组（如果尚未初始化）
             if (!oModel.getProperty("/attachments")) {
@@ -228,6 +260,7 @@ sap.ui.define([
          * 返回首页
          */
         onNavBack: function () {
+            this._abortActiveStreamRequest();
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("home");
         },
@@ -244,6 +277,135 @@ sap.ui.define([
                 // 隐藏侧边栏，全屏聊天
                 oFlexibleColumnLayout.setLayout("MidColumnFullScreen");
             }
+
+            this._setManagedTimeout(function () {
+                this._applySidebarColumnWidth();
+            }.bind(this), 0);
+        },
+
+        _bindSidebarResizeIntent: function () {
+            var oFlexibleColumnLayout = this.byId("flexibleColumnLayout");
+            if (!oFlexibleColumnLayout) {
+                return;
+            }
+
+            var oDomRef = oFlexibleColumnLayout.getDomRef();
+            if (!oDomRef) {
+                return;
+            }
+
+            if (this._oSidebarDomRef && this._oSidebarDomRef !== oDomRef && this._fnSidebarPointerDown) {
+                this._oSidebarDomRef.removeEventListener("pointerdown", this._fnSidebarPointerDown, true);
+                this._oSidebarDomRef.removeEventListener("mousedown", this._fnSidebarPointerDown, true);
+                this._oSidebarDomRef = null;
+            }
+
+            if (!this._fnSidebarPointerDown) {
+                var that = this;
+                this._fnSidebarPointerDown = function (oEvent) {
+                    if (that._isExiting || that._bSidebarWidthCustomized) {
+                        return;
+                    }
+
+                    var oTarget = oEvent.target;
+                    if (!oTarget || !oTarget.closest) {
+                        return;
+                    }
+
+                    var bHitSeparator = Boolean(oTarget.closest(".sapFFCLSeparator, .sapFFCLResizer, .sapUiLoSplitterBar, .sapUiLoSplitterBarGrip, .sapUiLoSplitterBarIcon"));
+                    if (!bHitSeparator) {
+                        var oCursorCheck = oTarget;
+                        while (oCursorCheck && oCursorCheck !== oDomRef) {
+                            var sCursor = window.getComputedStyle(oCursorCheck).cursor || "";
+                            if (sCursor.indexOf("col-resize") !== -1 || sCursor.indexOf("ew-resize") !== -1) {
+                                bHitSeparator = true;
+                                break;
+                            }
+                            oCursorCheck = oCursorCheck.parentElement;
+                        }
+                    }
+
+                    if (!bHitSeparator && typeof oEvent.clientX === "number") {
+                        var sBaseId = oFlexibleColumnLayout.getId();
+                        var oBeginColumn = document.getElementById(sBaseId + "-beginColumn");
+                        if (oBeginColumn) {
+                            var oRect = oBeginColumn.getBoundingClientRect();
+                            // 兼容不同主题下分隔条DOM差异：靠近列边界也视为用户要拖拽
+                            bHitSeparator = Math.abs(oEvent.clientX - oRect.right) <= 14;
+                        }
+                    }
+
+                    if (!bHitSeparator) {
+                        return;
+                    }
+
+                    that._bSidebarWidthCustomized = true;
+                    that._clearSidebarColumnWidth();
+                };
+            }
+
+            if (this._oSidebarDomRef !== oDomRef) {
+                oDomRef.addEventListener("pointerdown", this._fnSidebarPointerDown, true);
+                oDomRef.addEventListener("mousedown", this._fnSidebarPointerDown, true);
+                this._oSidebarDomRef = oDomRef;
+            }
+        },
+
+        _clearSidebarColumnWidth: function () {
+            var oFlexibleColumnLayout = this.byId("flexibleColumnLayout");
+            if (!oFlexibleColumnLayout) {
+                return;
+            }
+
+            var sBaseId = oFlexibleColumnLayout.getId();
+            var oBeginColumn = document.getElementById(sBaseId + "-beginColumn");
+            var oMidColumn = document.getElementById(sBaseId + "-midColumn");
+
+            if (oBeginColumn) {
+                oBeginColumn.style.removeProperty("flex");
+                oBeginColumn.style.removeProperty("max-width");
+                oBeginColumn.style.removeProperty("width");
+            }
+            if (oMidColumn) {
+                oMidColumn.style.removeProperty("flex");
+                oMidColumn.style.removeProperty("max-width");
+                oMidColumn.style.removeProperty("width");
+            }
+        },
+
+        _applySidebarColumnWidth: function () {
+            var oFlexibleColumnLayout = this.byId("flexibleColumnLayout");
+            if (!oFlexibleColumnLayout) {
+                return;
+            }
+
+            var sBaseId = oFlexibleColumnLayout.getId();
+            var oBeginColumn = document.getElementById(sBaseId + "-beginColumn");
+            var oMidColumn = document.getElementById(sBaseId + "-midColumn");
+
+            if (!oBeginColumn || !oMidColumn) {
+                return;
+            }
+
+            if (this._bSidebarWidthCustomized) {
+                return;
+            }
+
+            var sLayout = oFlexibleColumnLayout.getLayout();
+            var bDesktop = window.innerWidth >= 1024;
+            if (!bDesktop || sLayout !== "TwoColumnsMidExpanded") {
+                this._clearSidebarColumnWidth();
+                return;
+            }
+
+            // 原默认约 33%，按需求缩到约三分之二 => 22%
+            var nBeginWidth = 22;
+            oBeginColumn.style.flex = "0 0 " + nBeginWidth + "%";
+            oBeginColumn.style.maxWidth = nBeginWidth + "%";
+            oBeginColumn.style.width = nBeginWidth + "%";
+            oMidColumn.style.removeProperty("flex");
+            oMidColumn.style.removeProperty("max-width");
+            oMidColumn.style.removeProperty("width");
         },
 
         // 新建对话
@@ -484,7 +646,12 @@ sap.ui.define([
             var sMessage = oTextArea ? oTextArea.getValue() : oModel.getProperty("/inputValue");
             var bIsLoading = oModel.getProperty("/isLoading");
 
-            if (!sMessage || !sMessage.trim() || bIsLoading) {
+            if (bIsLoading) {
+                this._stopCurrentGeneration();
+                return;
+            }
+
+            if (!sMessage || !sMessage.trim()) {
                 return;
             }
 
@@ -544,6 +711,66 @@ sap.ui.define([
             this._callAIStream(sMessage.trim(), oAIMessage.id, oUserMessage.attachmentContext);
         },
 
+        _persistCurrentConversationState: function () {
+            var oModel = this.getView().getModel("chat");
+            var aMessages = oModel.getProperty("/messages") || [];
+            var sCurrentId = oModel.getProperty("/currentConversationId");
+            var aConversations = oModel.getProperty("/conversations") || [];
+            var iConvIndex = aConversations.findIndex(function (conv) {
+                return conv.id === sCurrentId;
+            });
+
+            if (iConvIndex < 0) {
+                return;
+            }
+
+            aConversations[iConvIndex].messages = JSON.parse(JSON.stringify(aMessages));
+            aConversations[iConvIndex].lastUpdate = this._formatDate(new Date());
+            oModel.setProperty("/conversations", aConversations);
+            this._syncToAllConversations(aConversations);
+            this.getOwnerComponent().saveConversationsToStorage();
+        },
+
+        _stopCurrentGeneration: function () {
+            var oModel = this.getView().getModel("chat");
+            if (!oModel.getProperty("/isLoading")) {
+                return;
+            }
+
+            this._abortActiveStreamRequest();
+            oModel.setProperty("/isLoading", false);
+
+            var aMessages = oModel.getProperty("/messages") || [];
+            var oLastAssistantMsg = null;
+            for (var i = aMessages.length - 1; i >= 0; i--) {
+                if (aMessages[i].role === "assistant") {
+                    oLastAssistantMsg = aMessages[i];
+                    break;
+                }
+            }
+
+            if (oLastAssistantMsg) {
+                var sPartialContent = (oLastAssistantMsg.content || "").trim();
+                if (sPartialContent) {
+                    this._updateAIMessageContent(oLastAssistantMsg.id, sPartialContent, true);
+                    this._finalizeAIMessage(oLastAssistantMsg.id, sPartialContent);
+                } else {
+                    aMessages = aMessages.filter(function (oMsg) {
+                        return oMsg.id !== oLastAssistantMsg.id;
+                    });
+                    oModel.setProperty("/messages", aMessages);
+                    var oContainer = document.getElementById("ai-msg-" + oLastAssistantMsg.id);
+                    if (oContainer) {
+                        oContainer.remove();
+                    }
+                    this._persistCurrentConversationState();
+                }
+            }
+
+            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+            MessageToast.show(oI18n.getText("generationPaused"));
+        },
+
 
         // 调用AI流式接口
         // session配置常量（与服务端保持一致）
@@ -562,7 +789,7 @@ sap.ui.define([
             var oModel = this.getView().getModel("chat");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             var sCurrentId = oModel.getProperty("/currentConversationId");
-            var aConversations = oModel.getProperty("/conversations");
+            var aConversations = oModel.getProperty("/conversations") || [];
             var oCurrentConv = aConversations.find(function (conv) {
                 return conv.id === sCurrentId;
             });
@@ -579,6 +806,21 @@ sap.ui.define([
             var oRequestBody = this._buildRequestBody(sMessage, sSessionId, oSessionInfo, aCurrentMessages, sAiType, sAttachmentContext);
 
             var sFullContent = "";
+            var nLastRenderAt = 0;
+            var RENDER_THROTTLE_MS = 80;
+            this._abortActiveStreamRequest();
+            var oAbortController = new AbortController();
+            this._oActiveStreamController = oAbortController;
+
+            var finalizeRequest = function () {
+                if (that._oActiveStreamController !== oAbortController) {
+                    return;
+                }
+                that._oActiveStreamController = null;
+                if (!that._isExiting) {
+                    oModel.setProperty("/isLoading", false);
+                }
+            };
 
             // 使用fetch进行流式请求
             fetch("/api/chat/stream", {
@@ -586,7 +828,8 @@ sap.ui.define([
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(oRequestBody)
+                body: JSON.stringify(oRequestBody),
+                signal: oAbortController.signal
             }).then(function (response) {
                 if (!response.ok) {
                     throw new Error(oI18n.getText("networkError"));
@@ -605,8 +848,12 @@ sap.ui.define([
 
                         if (oData.text) {
                             sFullContent += oData.text;
-                            that._updateAIMessageContent(sMessageId, sFullContent);
-                            that._scrollToBottom();
+                            var nNow = Date.now();
+                            if (!that._isExiting && (nNow - nLastRenderAt >= RENDER_THROTTLE_MS)) {
+                                that._updateAIMessageContent(sMessageId, sFullContent, false);
+                                that._scrollToBottom();
+                                nLastRenderAt = nNow;
+                            }
                         }
 
                         if (oData.sessionId && oCurrentConv && !oCurrentConv._sessionIdSaved) {
@@ -621,25 +868,44 @@ sap.ui.define([
                         }
                     },
                     onDone: function () {
+                        if (that._isExiting) {
+                            finalizeRequest();
+                            return;
+                        }
+                        that._updateAIMessageContent(sMessageId, sFullContent, true);
                         that._finalizeAIMessage(sMessageId, sFullContent);
-                        oModel.setProperty("/isLoading", false);
+                        finalizeRequest();
                     },
                     onError: function (streamError) {
                         console.error("流读取错误:", streamError);
+                        if (that._isExiting) {
+                            finalizeRequest();
+                            return;
+                        }
                         if (sFullContent) {
+                            that._updateAIMessageContent(sMessageId, sFullContent, true);
                             that._finalizeAIMessage(sMessageId, sFullContent);
                         }
-                        oModel.setProperty("/isLoading", false);
+                        finalizeRequest();
                         MessageToast.show(oI18n.getText("connectionInterrupted"));
                     }
                 });
             }).catch(function (error) {
+                if (error && error.name === "AbortError") {
+                    finalizeRequest();
+                    return;
+                }
                 console.error("AI调用错误:", error);
-                MessageToast.show(oI18n.getText("aiServiceUnavailable"));
-                oModel.setProperty("/isLoading", false);
+                if (!that._isExiting) {
+                    MessageToast.show(oI18n.getText("aiServiceUnavailable"));
+                }
+                finalizeRequest();
 
                 // 移除失败的AI消息
-                var aMessages = oModel.getProperty("/messages");
+                if (that._isExiting) {
+                    return;
+                }
+                var aMessages = oModel.getProperty("/messages") || [];
                 aMessages = aMessages.filter(function (msg) {
                     return msg.id !== sMessageId;
                 });
@@ -661,7 +927,7 @@ sap.ui.define([
 
             // 如果DOM未准备好，延迟重试
             if (!oDomRef) {
-                setTimeout(function () {
+                this._setManagedTimeout(function () {
                     that._renderUserMessage(oMessage);
                 }, 100);
                 return;
@@ -671,7 +937,7 @@ sap.ui.define([
             var sAttachmentStripHtml = this._buildMessageAttachmentStripHtml(oMessage.attachments);
             var sHtml = '<div class="messageItem userMessage" id="user-msg-' + oMessage.id + '">' +
                 '<div class="avatarContainer">' +
-                '<span class="sapUiIcon userAvatar" style="font-family: SAP-icons">&#xe036;</span>' +
+                '<img class="avatarImage userAvatarImg" src="images/user_avatar_1772638105594.png" alt="User Avatar">' +
                 '</div>' +
                 '<div class="messageContent">' +
                 '<div class="messageText">' + Utils.escapeHtml(oMessage.content) + '</div>' +
@@ -720,7 +986,7 @@ sap.ui.define([
 
             // 如果DOM未准备好，延迟重试
             if (!oDomRef) {
-                setTimeout(function () {
+                this._setManagedTimeout(function () {
                     that._renderAIMessageContainer(sMessageId);
                 }, 100);
                 return;
@@ -728,7 +994,7 @@ sap.ui.define([
 
             var sHtml = '<div class="messageItem aiMessage" id="ai-msg-' + sMessageId + '">' +
                 '<div class="avatarContainer">' +
-                '<span class="sapUiIcon aiAvatar" style="font-family: SAP-icons">&#xe1c3;</span>' +
+                '<img class="avatarImage aiAvatarImg" src="images/ai_avatar_1772638017386.png" alt="AI Avatar">' +
                 '</div>' +
                 '<div class="messageContent">' +
                 '<div class="messageText" id="ai-text-' + sMessageId + '">' +
@@ -769,7 +1035,7 @@ sap.ui.define([
                     if (sFullText) {
                         Utils.copyTextToClipboard(sFullText).then(function () {
                             oCopyMsgBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe05b;</span> ' + sCopiedText;
-                            setTimeout(function () {
+                            that._setManagedTimeout(function () {
                                 oCopyMsgBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
                             }, 2000);
                         }).catch(function () {
@@ -783,7 +1049,7 @@ sap.ui.define([
         },
 
         // 更新AI消息内容（流式）
-        _updateAIMessageContent: function (sMessageId, sContent) {
+        _updateAIMessageContent: function (sMessageId, sContent, bFinalize) {
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
             var oMessage = aMessages.find(function (msg) {
@@ -800,11 +1066,13 @@ sap.ui.define([
                 var sRenderedContent = this._renderMarkdown(sContent);
                 oTextElement.innerHTML = sRenderedContent;
 
-                // 高亮代码块
-                this._highlightCode(oTextElement);
+                if (bFinalize !== false) {
+                    // 高亮代码块
+                    this._highlightCode(oTextElement);
 
-                // 添加复制按钮
-                this._addCopyButtons(oTextElement);
+                    // 添加复制按钮
+                    this._addCopyButtons(oTextElement);
+                }
             }
         },
 
@@ -812,7 +1080,7 @@ sap.ui.define([
         // 完成AI消息
         _finalizeAIMessage: function (sMessageId, sContent) {
             var oModel = this.getView().getModel("chat");
-            var aMessages = oModel.getProperty("/messages");
+            var aMessages = oModel.getProperty("/messages") || [];
             var sCurrentId = oModel.getProperty("/currentConversationId");
 
             // 更新消息内容
@@ -825,7 +1093,7 @@ sap.ui.define([
             }
 
             // 更新对话 - 深拷贝消息数组确保数据独立
-            var aConversations = oModel.getProperty("/conversations");
+            var aConversations = oModel.getProperty("/conversations") || [];
             var iConvIndex = aConversations.findIndex(function (conv) {
                 return conv.id === sCurrentId;
             });
@@ -920,6 +1188,7 @@ sap.ui.define([
 
         // 添加复制按钮到代码块
         _addCopyButtons: function (oElement) {
+            var that = this;
             var aPreBlocks = oElement.querySelectorAll("pre");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             var sCopyText = oI18n.getText("copy");
@@ -927,8 +1196,8 @@ sap.ui.define([
             var sCopyFailedText = oI18n.getText("copyFailed");
 
             aPreBlocks.forEach(function (pre) {
-                // 检查是否已有复制按钮
-                if (pre.querySelector(".copyButton")) {
+                // 避免重复包装同一个代码块
+                if (pre.parentNode && pre.parentNode.classList && pre.parentNode.classList.contains("codeBlockWrapper")) {
                     return;
                 }
 
@@ -942,7 +1211,7 @@ sap.ui.define([
                     Utils.copyTextToClipboard(sCode).then(function () {
                         // SAP-icons: &#xe05b; = accept (勾选图标，表示复制成功)
                         oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe05b;</span> ' + sCopiedText;
-                        setTimeout(function () {
+                        that._setManagedTimeout(function () {
                             oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
                         }, 2000);
                     }).catch(function () {
@@ -996,7 +1265,7 @@ sap.ui.define([
             var oScrollContainer = this.byId("messageScrollContainer");
 
             if (oScrollContainer) {
-                setTimeout(function () {
+                this._setManagedTimeout(function () {
                     var oDomRef = oScrollContainer.getDomRef();
                     if (oDomRef) {
                         oDomRef.scrollTop = oDomRef.scrollHeight;
@@ -1149,6 +1418,41 @@ sap.ui.define([
             return sYear + "-" + sMonth + "-" + sDay + " " + sHour + ":" + sMinute;
         },
 
+        _setManagedTimeout: function (fnCallback, nDelay) {
+            var that = this;
+            var iTimer = setTimeout(function () {
+                that._pendingTimeouts.delete(iTimer);
+                if (that._isExiting) {
+                    return;
+                }
+                fnCallback();
+            }, nDelay);
+            this._pendingTimeouts.add(iTimer);
+            return iTimer;
+        },
+
+        _clearManagedTimeout: function (iTimer) {
+            if (!iTimer) {
+                return;
+            }
+            clearTimeout(iTimer);
+            this._pendingTimeouts.delete(iTimer);
+        },
+
+        _clearAllManagedTimeouts: function () {
+            this._pendingTimeouts.forEach(function (iTimer) {
+                clearTimeout(iTimer);
+            });
+            this._pendingTimeouts.clear();
+        },
+
+        _abortActiveStreamRequest: function () {
+            if (this._oActiveStreamController) {
+                this._oActiveStreamController.abort();
+                this._oActiveStreamController = null;
+            }
+        },
+
         // 隐藏欢迎框
         _hideWelcomeBox: function () {
             var oWelcomeBox = this.byId("welcomeBox");
@@ -1227,13 +1531,26 @@ sap.ui.define([
             var that = this;
 
             // 延迟等待DOM渲染完成
-            setTimeout(function () {
+            this._setManagedTimeout(function () {
                 var oFileInput = document.getElementById("hiddenFileInput");
-                if (oFileInput && !oFileInput._boundChange) {
-                    oFileInput.addEventListener("change", function (oEvent) {
+                if (!oFileInput) {
+                    return;
+                }
+
+                if (!that._fnFileInputChange) {
+                    that._fnFileInputChange = function (oEvent) {
                         that._handleFileSelect(oEvent);
-                    });
-                    oFileInput._boundChange = true;
+                    };
+                }
+
+                if (that._oBoundFileInput && that._oBoundFileInput !== oFileInput) {
+                    that._oBoundFileInput.removeEventListener("change", that._fnFileInputChange);
+                    that._oBoundFileInput = null;
+                }
+
+                if (that._oBoundFileInput !== oFileInput) {
+                    oFileInput.addEventListener("change", that._fnFileInputChange);
+                    that._oBoundFileInput = oFileInput;
                 }
             }, 500);
         },
@@ -1472,7 +1789,7 @@ sap.ui.define([
 
             var oDomRef = oAttachmentList.getDomRef();
             if (!oDomRef) {
-                setTimeout(function () {
+                this._setManagedTimeout(function () {
                     that._renderAttachmentCard(oAttachment);
                 }, 100);
                 return;
@@ -1687,6 +2004,43 @@ sap.ui.define([
             // 清空DOM
             this._clearAttachmentDom();
             this._updateAttachmentAreaVisibility();
+        },
+
+        onExit: function () {
+            this._isExiting = true;
+            this._abortActiveStreamRequest();
+            this._clearAllManagedTimeouts();
+
+            if (this._fnSidebarResizeHandler) {
+                window.removeEventListener("resize", this._fnSidebarResizeHandler);
+                this._fnSidebarResizeHandler = null;
+            }
+
+            if (this._oSidebarDomRef && this._fnSidebarPointerDown) {
+                this._oSidebarDomRef.removeEventListener("pointerdown", this._fnSidebarPointerDown, true);
+                this._oSidebarDomRef.removeEventListener("mousedown", this._fnSidebarPointerDown, true);
+            }
+            this._oSidebarDomRef = null;
+            this._fnSidebarPointerDown = null;
+
+            this._clearSidebarColumnWidth();
+
+            if (this._oChatRoute) {
+                this._oChatRoute.detachPatternMatched(this._onRouteMatched, this);
+                this._oChatRoute = null;
+            }
+
+            if (this._oBoundTextAreaElement && this._fnMessageInputKeydown) {
+                this._oBoundTextAreaElement.removeEventListener("keydown", this._fnMessageInputKeydown, true);
+            }
+            this._oBoundTextAreaElement = null;
+            this._fnMessageInputKeydown = null;
+
+            if (this._oBoundFileInput && this._fnFileInputChange) {
+                this._oBoundFileInput.removeEventListener("change", this._fnFileInputChange);
+            }
+            this._oBoundFileInput = null;
+            this._fnFileInputChange = null;
         }
     });
 });

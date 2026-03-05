@@ -47,8 +47,11 @@
                                 alignItems="Center"
                                 justifyContent="SpaceBetween"
                                 width="100%"
-                                class="sapUiTinyMargin">
-                                <VBox width="80%">
+                                class="conversationItemRow">
+                                <VBox class="conversationTextBlock">
+                                    <layoutData>
+                                        <FlexItemData growFactor="1" shrinkFactor="1"/>
+                                    </layoutData>
                                     <Text
                                         text="{chat>title}"
                                         maxLines="1"
@@ -57,17 +60,19 @@
                                         text="{chat>lastUpdate}"
                                         class="conversationDate sapUiTinyMarginTop"/>
                                 </VBox>
-                                <HBox>
+                                <HBox class="conversationActions" alignItems="Center">
                                     <Button
                                         icon="sap-icon://edit"
                                         type="Transparent"
                                         press="onEditConversationTitle"
-                                        tooltip="{i18n>editTitle}"/>
+                                        tooltip="{i18n>editTitle}"
+                                        class="conversationActionBtn"/>
                                     <Button
                                         icon="sap-icon://delete"
                                         type="Transparent"
                                         press="onDeleteConversation"
-                                        tooltip="{i18n>deleteConversation}"/>
+                                        tooltip="{i18n>deleteConversation}"
+                                        class="conversationActionBtn"/>
                                 </HBox>
                             </HBox>
                         </CustomListItem>
@@ -172,12 +177,12 @@
                                 </TextArea>
                                 <Button
                                     id="sendButton"
-                                    icon="sap-icon://paper-plane"
+                                    icon="{= ${chat>/isLoading} ? 'sap-icon://media-pause' : 'sap-icon://paper-plane' }"
                                     type="Transparent"
                                     press="onSendMessage"
                                     class="sendButtonGlass"
-                                    enabled="{= !${chat>/isLoading}}"
-                                    tooltip="{i18n>sendTooltip}"/>
+                                    enabled="true"
+                                    tooltip="{= ${chat>/isLoading} ? ${i18n>pauseTooltip} : ${i18n>sendTooltip} }"/>
                             </HBox>
                         </HBox>
                     </VBox>

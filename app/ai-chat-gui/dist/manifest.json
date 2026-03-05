@@ -6,7 +6,7 @@
 		"title": "{{appTitle}}",
 		"description": "{{appDescription}}",
 		"applicationVersion": {
-			"version": "1.0.0"
+			"version": "1.4.3"
 		},
 		"i18n": {
 			"bundleUrl": "i18n/i18n.properties",
