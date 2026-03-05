@@ -4,9 +4,9 @@ sap.ui.define([
 ], function (UIComponent, MessageToast) {
     "use strict";
 
-    // localStorage存储键名
+    // localStorage 存储键名
     var STORAGE_KEY = "ai_chat_conversations";
-    // 最大存储对话数量（防止localStorage溢出）
+    // 最大存储对话数量（防止 localStorage 溢出）
     var MAX_CONVERSATIONS = 100;
 
     return UIComponent.extend("com.ai.assistant.aichatapp.Component", {
@@ -14,7 +14,7 @@ sap.ui.define([
             manifest: "json"
         },
         
-        // 全局对话列表（包含所有AI类型的对话）
+        // 全局对话列表（包含所有 AI 类型的对话）
         _aAllConversations: [],
 
         init: function () {
@@ -24,11 +24,11 @@ sap.ui.define([
             // 初始化路由
             this.getRouter().initialize();
 
-            // 从localStorage加载历史对话
+            // 从 localStorage 加载历史对话
             this._loadConversationsFromStorage();
         },
 
-        // 从localStorage加载对话历史
+        // 从 localStorage 读取并恢复历史对话
         _loadConversationsFromStorage: function () {
             try {
                 var sStoredData = localStorage.getItem(STORAGE_KEY);
@@ -37,10 +37,10 @@ sap.ui.define([
                     var aConversations = JSON.parse(sStoredData);
                     // 验证数据格式
                     if (Array.isArray(aConversations)) {
-                        // 兼容旧数据：为没有aiType的对话添加默认值
+                        // 兼容旧数据：为缺失 aiType 的会话补默认值
                         aConversations = aConversations.map(function (conv) {
                             if (!conv.aiType) {
-                                conv.aiType = "abap-clean-core";  // 默认AI类型
+                                conv.aiType = "abap-clean-core";  // 默认 AI 类型
                             }
                             if (!Array.isArray(conv.attachments)) {
                                 conv.attachments = [];
@@ -52,7 +52,7 @@ sap.ui.define([
                     }
                 }
             } catch {
-                // 如果数据损坏，清除并重置
+                // 存储数据损坏时，清空并重置
                 try {
                     localStorage.removeItem(STORAGE_KEY);
                 } catch {
@@ -78,12 +78,12 @@ sap.ui.define([
         },
 
 
-        // 保存对话到localStorage
+        // 将对话持久化到 localStorage
         saveConversationsToStorage: function () {
             var aAllConversations = this._aAllConversations || [];
             
             try {
-                // 限制存储的对话数量，防止localStorage溢出
+                // 限制持久化数量，防止 localStorage 空间耗尽
                 if (aAllConversations.length > MAX_CONVERSATIONS) {
                     aAllConversations = aAllConversations.slice(0, MAX_CONVERSATIONS);
                     this._aAllConversations = aAllConversations;
@@ -92,9 +92,9 @@ sap.ui.define([
                 var aStoredConversations = this._sanitizeConversationsForStorage(aAllConversations);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(aStoredConversations));
             } catch (e) {
-                // 检查是否为存储空间不足
+                // 判断是否为存储空间不足错误
                 if (e.name === 'QuotaExceededError' || e.code === 22) {
-                    // 尝试删除最旧的对话后重试
+                    // 自动裁剪旧会话后重试一次
                     if (aAllConversations.length > 1) {
                         aAllConversations = aAllConversations.slice(0, Math.floor(aAllConversations.length / 2));
                         this._aAllConversations = aAllConversations;

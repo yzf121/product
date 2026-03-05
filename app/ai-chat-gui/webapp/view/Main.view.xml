@@ -140,11 +140,11 @@
                         <!-- 附件预览区域 - 位于输入框上方 -->
                         <VBox id="attachmentPreviewArea" class="attachmentPreviewArea" visible="{= ${chat>/attachments}.length > 0}">
                             <HBox id="attachmentList" class="attachmentList" wrap="Wrap">
-                                <!-- 附件卡片将通过JS动态添加 -->
+                                <!-- 附件卡片由脚本动态插入 -->
                             </HBox>
                         </VBox>
                         
-                        <!-- 输入区域 - 悬浮在底部 (Pill shape) -->
+                        <!-- 输入区域（底部悬浮胶囊样式） -->
                         <HBox class="inputAreaWrapper" width="100%" justifyContent="Center" alignItems="Center">
                             <layoutData>
                                 <FlexItemData growFactor="0" shrinkFactor="0"/>

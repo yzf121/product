@@ -40,7 +40,7 @@
                 <Title text="{i18n>aiAssistantsCategory}" level="H2" class="sapUiMediumMarginBottom categoryTitle"/>
                 
                 <HBox wrap="Wrap" class="tileContainer">
-                    <!-- ABAP Clean Core AI -->
+                    <!-- ABAP Clean Core 助手 -->
                     <GenericTile
                         header="{i18n>abapCleanCoreTitle}"
                         subheader="{i18n>abapCleanCoreDesc}"
@@ -54,7 +54,7 @@
                         </customData>
                     </GenericTile>
                     
-                    <!-- CPI AI -->
+                    <!-- CPI 助手 -->
                     <GenericTile
                         header="{i18n>cpiAiTitle}"
                         subheader="{i18n>cpiAiDesc}"
@@ -68,7 +68,7 @@
                         </customData>
                     </GenericTile>
                     
-                    <!-- Function Doc AI -->
+                    <!-- Function Doc 助手 -->
                     <GenericTile
                         header="{i18n>funcDocAiTitle}"
                         subheader="{i18n>funcDocAiDesc}"
@@ -106,7 +106,7 @@
                         &lt;/div&gt;
                     "/>
 
-                    <!-- Tech Doc AI -->
+                    <!-- Tech Doc 助手 -->
                     <GenericTile
                         header="{i18n>techDocAiTitle}"
                         subheader="{i18n>techDocAiDesc}"
@@ -127,7 +127,7 @@
                 <Title text="{i18n>toolsCategory}" level="H2" class="sapUiMediumMarginBottom categoryTitle"/>
                 
                 <HBox wrap="Wrap" class="tileContainer">
-                    <!-- Diagram Helper - 流程图生成 -->
+                    <!-- Diagram Helper（流程图生成） -->
                     <GenericTile
                         header="{i18n>diagramHelperTitle}"
                         subheader="{i18n>diagramHelperDesc}"

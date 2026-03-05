@@ -1,4 +1,4 @@
-/* AI聊天助手样式 - Accenture Premium Theme */
+/* AI 聊天助手样式（埃森哲高级主题） */
 
 /* 全局字体优化 */
 body,
@@ -58,7 +58,7 @@ body,
     background: rgba(0, 112, 173, 0.2) !important;
 }
 
-/* 隐藏滚动条但保留功能 (Chrome/Safari) */
+/* 隐藏滚动条但保留滚动能力（Chrome/Safari） */
 .messageScrollContainer::-webkit-scrollbar {
     width: 6px;
 }
@@ -265,7 +265,7 @@ body,
     font-size: 0.68rem;
 }
 
-/* Markdown 内容优化 */
+/* Markdown 内容样式优化 */
 .messageText p {
     margin: 0 0 0.8rem 0;
 }
@@ -426,14 +426,14 @@ body,
     border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 30px;
     padding: 0.6rem 0.8rem 0.6rem 1.2rem;
-    /* Restore generous padding */
+    /* 恢复更舒展的内边距 */
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     max-width: 900px;
     margin: 0 auto;
     min-height: 60px;
     align-items: flex-end !important;
-    /* Keep buttons at the bottom when expanding */
+    /* 输入框扩展时保持按钮底部对齐 */
     box-sizing: border-box;
 }
 
@@ -479,7 +479,7 @@ body,
     height: auto !important;
 }
 
-/* UI5 渲染 TextArea 时会在外面包裹一层 div */
+/* UI5 渲染 TextArea 时会额外包裹一层 div */
 .messageInputGlass.sapMTextArea {
     min-height: 24px !important;
 }
@@ -496,7 +496,7 @@ body,
     resize: none !important;
     box-sizing: border-box;
     height: 100% !important;
-    /* allow it to scroll when exceeding max lines */
+    /* 超过最大行数后允许内部滚动 */
     overflow-y: auto !important;
 }
 
@@ -507,16 +507,16 @@ body,
     border: none !important;
 }
 
-/* 覆盖 UI5 默认内部 wrapper 以防背景泄漏 */
+/* 覆盖 UI5 默认内层 wrapper，避免背景泄漏 */
 .messageInputGlass .sapMTextAreaInner {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
     padding: 0.4rem 0.2rem !important;
-    /* Move padding to the inner wrapper so text area scroll works correctly */
+    /* 将内边距放到内层 wrapper，确保文本区域滚动行为正常 */
 }
 
-/* 发送按钮 - SAP风格 4:3 圆角长方形 */
+/* 发送按钮（SAP 风格 4:3 圆角长方形） */
 .sendButtonGlass {
     width: 56px !important;
     min-width: 56px !important;
@@ -823,7 +823,7 @@ body,
     height: 100%;
 }
 
-/* 确保 chatContainer 填满整个内容区域 */
+/* 确保 `chatContainer` 填满整个内容区域 */
 .chatContainer {
     position: absolute !important;
     top: 0;
@@ -833,7 +833,7 @@ body,
     height: 100% !important;
 }
 
-/* ScrollContainer 内部样式修复 */
+/* `ScrollContainer` 内部样式修复 */
 .messageScrollContainer>div {
     height: 100%;
     overflow-y: auto;
@@ -868,7 +868,7 @@ body,
     }
 }
 
-/* iOS Safari 键盘弹出时的适配 */
+/* iOS Safari 键盘弹出场景适配 */
 @supports (-webkit-touch-callout: none) {
     .inputArea {
         padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
@@ -876,7 +876,7 @@ body,
 }
 
 
-/* ==================== 首页 Launchpad 样式 ==================== */
+/* ==================== 首页启动面板样式 ==================== */
 
 /* 首页背景 */
 .homePageBackground {
@@ -956,9 +956,9 @@ body,
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* ==================== FSD转TSD助手 - 上下分离磁贴（纯HTML版） ==================== */
+/* ==================== FSD 转 TSD 助手：上下分离磁贴（纯 HTML 版） ==================== */
 
-/* 外层容器 - 与标准GenericTile完全一致的尺寸 */
+/* 外层容器：与标准 GenericTile 保持一致尺寸 */
 .fsd2tsdWrapper {
     width: 11rem;
     min-width: 200px;
@@ -1060,7 +1060,7 @@ body,
     margin-left: 0.5rem;
 }
 
-/* Focus 状态（键盘导航） */
+/* 焦点状态（键盘导航） */
 .fsd2tsdHalf:focus {
     outline: 2px solid rgba(255, 255, 255, 0.8);
     outline-offset: -2px;

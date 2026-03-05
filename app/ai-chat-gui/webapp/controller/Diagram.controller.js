@@ -1081,7 +1081,7 @@ sap.ui.define([
                     var msg = JSON.parse(event.data);
                     that._handleDrawioMsg(msg);
                 } catch {
-                    // ignore malformed cross-window message payload
+                    // 忽略格式异常的跨窗口消息
                 }
             };
             window.addEventListener("message", this._fnDrawioHandler);
@@ -1202,7 +1202,7 @@ sap.ui.define([
                             });
                     }
                 } catch {
-                    // ignore malformed cross-window message payload
+                    // 忽略格式异常的跨窗口消息
                 }
             };
             this._fnDrawioCopyHandler = fnHandler;
@@ -1285,3 +1285,4 @@ sap.ui.define([
         }
     });
 });
+

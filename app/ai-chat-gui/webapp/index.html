@@ -6,7 +6,7 @@
     <meta name="description" content="ABAP CLEAN CORE HELPER - 基于阿里云百炼的ABAP助手">
     <title>ABAP CLEAN CORE HELPER</title>
     
-    <!-- SAP UI5 Bootstrap - 自动选择加载路径 -->
+    <!-- SAP UI5 启动脚本：按环境自动选择加载路径 -->
     <script>
         (function() {
             // 判断是否为本地开发环境
@@ -14,13 +14,13 @@
                              window.location.hostname === '127.0.0.1';
             
             // 根据环境选择 UI5 资源路径
-            // 本地开发：使用 CDN（因为本地没有 ui5 代理）
+            // 本地开发：使用 CDN（本地通常未配置 UI5 代理）
             // 生产环境：优先使用相对路径（通过 xs-app.json 路由），回退到 CDN
             var ui5Src = isLocalDev 
                 ? 'https://sapui5.hana.ondemand.com/resources/sap-ui-core.js'
                 : 'resources/sap-ui-core.js';
             
-            // 动态创建并插入 UI5 bootstrap script
+            // 动态创建并插入 UI5 bootstrap 脚本
             var script = document.createElement('script');
             script.id = 'sap-ui-bootstrap';
             script.src = ui5Src;
@@ -48,7 +48,7 @@
     <!-- marked.js - Markdown渲染库 -->
     <script src="lib/marked.min.js"></script>
     <script>
-        // 检查marked是否加载成功，如果失败则提供简单的降级处理
+        // 检查 marked 是否加载成功；失败时回退为纯文本渲染
         if (typeof marked === 'undefined') {
             console.warn('marked.js 加载失败，Markdown渲染将使用纯文本显示');
             window.marked = {
@@ -58,11 +58,11 @@
         }
     </script>
     
-    <!-- highlight.js - 代码高亮库 -->
+    <!-- highlight.js：代码高亮库 -->
     <link rel="stylesheet" href="css/highlight-github-dark.min.css">
     <script src="lib/highlight.min.js"></script>
     <script>
-        // 检查hljs是否加载成功
+        // 检查 hljs 是否加载成功
         if (typeof hljs === 'undefined') {
             console.warn('highlight.js 加载失败，代码高亮功能将不可用');
             window.hljs = {

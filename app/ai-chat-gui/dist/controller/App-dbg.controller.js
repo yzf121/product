@@ -5,7 +5,7 @@ sap.ui.define([
 
     return Controller.extend("com.ai.assistant.aichatapp.controller.App", {
         onInit: function () {
-            // App控制器初始化
+            // 应用根控制器初始化（当前仅保留生命周期入口）
         }
     });
 });

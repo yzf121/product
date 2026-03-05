@@ -1,7 +1,7 @@
 const cds = require('@sap/cds');
 require('dotenv').config();
 
-// 从环境变量读取阿里云百炼API配置
+// 从环境变量读取阿里云百炼 API 配置
 const DASHSCOPE_APP_ID = process.env.DASHSCOPE_APP_ID || process.env.DASHSCOPE_APP_ID_ABAP;
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 
@@ -9,12 +9,12 @@ function buildDashScopeApiUrl(appId) {
     return `https://dashscope.aliyuncs.com/api/v1/apps/${appId}/completion`;
 }
 
-// API请求超时时间（毫秒）
+// 上游请求超时时间（毫秒）
 const API_TIMEOUT = 60000;
 
 module.exports = class ChatService extends cds.ApplicationService {
     init() {
-        // 处理普通消息请求（非流式，作为备用方案）
+        // 处理非流式消息请求（作为流式接口的备用通道）
         this.on('sendMessage', async (req) => {
             const { message, sessionId } = req.data;
             
@@ -30,7 +30,7 @@ module.exports = class ChatService extends cds.ApplicationService {
         return super.init();
     }
 
-    // 调用阿里云百炼API（非流式）
+    // 调用阿里云百炼 API（非流式）
     async callDashScope(message, sessionId) {
         if (!DASHSCOPE_APP_ID || !DASHSCOPE_API_KEY) {
             throw new Error('AI service configuration is missing');
@@ -48,12 +48,12 @@ module.exports = class ChatService extends cds.ApplicationService {
             }
         };
 
-        // 如果有会话ID，添加到请求中以保持上下文
+        // 传入会话 ID 时，附带 `session_id` 以保持上下文
         if (sessionId) {
             requestBody.input.session_id = sessionId;
         }
 
-        // 创建AbortController用于超时控制
+        // 通过 AbortController 控制请求超时
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort();
@@ -71,7 +71,7 @@ module.exports = class ChatService extends cds.ApplicationService {
                 signal: controller.signal
             });
 
-            // 清除超时定时器
+            // 请求结束后清理超时定时器
             clearTimeout(timeoutId);
 
             if (!response.ok) {
@@ -88,7 +88,7 @@ module.exports = class ChatService extends cds.ApplicationService {
             
             throw new Error('AI响应格式异常');
         } catch (error) {
-            // 清除超时定时器
+            // 异常分支同样需要清理超时定时器
             clearTimeout(timeoutId);
             
             if (error.name === 'AbortError') {

@@ -9,7 +9,7 @@ sap.ui.define([
 
         onInit: function () {
             // 首页控制器初始化
-            // 绑定FSD转TSD自定义磁贴的点击事件
+            // 绑定 FSD 转 TSD 自定义磁贴的点击事件
             this._oAfterRenderingDelegate = {
                 onAfterRendering: this._bindFsd2TsdTiles.bind(this)
             };
@@ -17,7 +17,7 @@ sap.ui.define([
         },
 
         /**
-         * 绑定FSD转TSD自定义HTML磁贴的点击事件
+         * 绑定 FSD 转 TSD 自定义 HTML 磁贴的点击事件
          */
         _bindFsd2TsdTiles: function () {
             var that = this;
@@ -77,7 +77,7 @@ sap.ui.define([
         },
 
         /**
-         * 导航到FSD转TSD聊天页面
+         * 导航到 FSD 转 TSD 聊天页面
          */
         _navigateToFsd2Tsd: function (sAiType, sHeader) {
             var oRouter = this.getOwnerComponent().getRouter();
@@ -98,13 +98,13 @@ sap.ui.define([
             var sAiType = oTile.data("aiType");
             var sHeader = oTile.getHeader();
 
-            // 获取路由并导航到聊天页面
+            // 获取路由并跳转到聊天页
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("chat", {
                 aiType: sAiType
             });
 
-            // 显示提示
+            // 显示进入提示
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             MessageToast.show(oI18n.getText("enteringChat", [sHeader]));
         },

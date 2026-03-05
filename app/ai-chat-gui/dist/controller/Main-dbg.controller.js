@@ -1,4 +1,4 @@
-﻿sap.ui.define([
+sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
@@ -6,16 +6,14 @@
 ], function (Controller, MessageBox, MessageToast, Utils) {
     "use strict";
 
-    // comment
     var FILE_UPLOAD_CONFIG = {
-        MAX_FILE_SIZE: 50 * 1024 * 1024,  // 50MB
+        MAX_FILE_SIZE: 50 * 1024 * 1024,  // 50 MB
         MAX_FILES_PER_SESSION: 5,
         ALLOWED_EXTENSIONS: ['.pdf', '.docx', '.txt', '.md', '.json', '.xml', '.csv', '.xlsx', '.xls'],
-        POLL_INTERVAL: 2000,              // Ã¨Â½Â®Ã¨Â¯Â¢Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½a2ÃƒÂ§Ã‚Â§Ã¢â‚¬â„¢
-        MAX_POLL_ATTEMPTS: 60             // Max polling attempts (~2 minutes)
+        POLL_INTERVAL: 2000,              // 轮询间隔（2 秒）
+        MAX_POLL_ATTEMPTS: 60             // 最大轮询次数（约 2 分钟）
     };
 
-    // comment
     var FILE_TYPE_ICONS = {
         'pdf': { icon: '&#xe9c6;', class: 'pdf' },
         'doc': { icon: '&#xe9ca;', class: 'doc' },
@@ -40,8 +38,6 @@
     return Controller.extend("com.ai.assistant.aichatapp.controller.Main", {
 
         onInit: function () {
-            // comment
-            // comment
             this._isExiting = false;
             this._pendingTimeouts = new Set();
             this._oActiveStreamController = null;
@@ -53,7 +49,6 @@
             this._fnSidebarPointerDown = null;
             this._oSidebarDomRef = null;
 
-            // comment
             var oRouter = this.getOwnerComponent().getRouter();
             this._oChatRoute = oRouter.getRoute("chat");
             this._oChatRoute.attachPatternMatched(this._onRouteMatched, this);
@@ -70,9 +65,6 @@
         },
 
 
-        /**
-          *
-         */
         onAfterRendering: function () {
             this._bindKeyboardShortcut();
             this._bindFileInputChange();
@@ -87,10 +79,6 @@
             }
         },
 
-        /**
-          *
-          *
-         */
         _bindKeyboardShortcut: function () {
             var oTextArea = this.byId("messageInput");
 
@@ -99,7 +87,6 @@
                 var oTextAreaElement = oDomRef.querySelector("textarea");
 
                 if (oTextAreaElement) {
-                    // comment
                     if (this._oBoundTextAreaElement && this._oBoundTextAreaElement !== oTextAreaElement && this._fnMessageInputKeydown) {
                         this._oBoundTextAreaElement.removeEventListener("keydown", this._fnMessageInputKeydown, true);
                         this._oBoundTextAreaElement = null;
@@ -112,13 +99,11 @@
                     if (!this._fnMessageInputKeydown) {
                         var that = this;
                         this._fnMessageInputKeydown = function (oEvent) {
-                            // comment
                             if (oEvent.key === "Enter" && !oEvent.shiftKey) {
                                 oEvent.preventDefault();
                                 oEvent.stopPropagation();
                                 that.onSendMessage();
                             }
-                            // comment
                         };
                     }
 
@@ -128,10 +113,6 @@
             }
         },
 
-        /**
-          *
-          *
-         */
         _onRouteMatched: function (oEvent) {
             var sAiType = oEvent.getParameter("arguments").aiType;
             var oModel = this.getView().getModel("chat");
@@ -143,59 +124,42 @@
                 oModel.setProperty("/isLoading", false);
             }
 
-            // comment
             if (!oModel.getProperty("/attachments")) {
                 oModel.setProperty("/attachments", []);
             }
 
-            // comment
             oModel.setProperty("/currentAiType", sAiType);
 
-            // comment
             var sTitleKey = this._getAiTitleKey(sAiType);
             var sTitle = oI18n.getText(sTitleKey);
             oModel.setProperty("/currentAiTitle", sTitle);
 
-            // comment
             this.byId("chatPageTitle").setText(sTitle);
 
-            // comment
             this._updateWelcomeMessage(sAiType);
 
-            // comment
             if (sPreviousAiType && sPreviousAiType !== sAiType) {
                 this._resetCurrentConversation();
             }
 
-            // comment
             this._filterConversationsByAiType(sAiType);
         },
 
-        /**
-          *
-         */
         _resetCurrentConversation: function () {
             var oModel = this.getView().getModel("chat");
 
-            // comment
             oModel.setProperty("/currentConversationId", null);
             oModel.setProperty("/messages", []);
             this._setAttachmentsForConversation(null);
 
-            // comment
             this._clearMessageContainer();
             this._showWelcomeBox();
         },
 
-        /**
-          *
-          *
-         */
         _filterConversationsByAiType: function (sAiType) {
             var oModel = this.getView().getModel("chat");
             var aAllConversations = this.getOwnerComponent()._aAllConversations || [];
 
-            // comment
             var aFilteredConversations = aAllConversations.filter(function (conv) {
                 return conv.aiType === sAiType;
             });
@@ -203,10 +167,6 @@
             oModel.setProperty("/conversations", aFilteredConversations);
         },
 
-        /**
-          *
-          *
-         */
         _updateWelcomeMessage: function (sAiType) {
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
             var oWelcomeBox = this.byId("welcomeBox");
@@ -215,15 +175,12 @@
                 return;
             }
 
-            // comment
             var sWelcomeTitleKey = "welcomeTitle_" + sAiType;
             var sWelcomeMessageKey = "welcomeMessage_" + sAiType;
 
-            // comment
             var sWelcomeTitle = oI18n.getText(sWelcomeTitleKey);
             var sWelcomeMessage = oI18n.getText(sWelcomeMessageKey);
 
-            // comment
             if (sWelcomeTitle === sWelcomeTitleKey) {
                 sWelcomeTitle = oI18n.getText("welcomeTitle");
             }
@@ -231,7 +188,6 @@
                 sWelcomeMessage = oI18n.getText("welcomeMessage");
             }
 
-            // comment
             var aItems = oWelcomeBox.getItems();
             aItems.forEach(function (oItem) {
                 if (oItem.isA("sap.m.Title")) {
@@ -242,11 +198,6 @@
             });
         },
 
-        /**
-          *
-          *
-          *
-         */
         _getAiTitleKey: function (sAiType) {
             var oTitleMap = {
                 "abap-clean-core": "abapCleanCoreTitle",
@@ -261,25 +212,19 @@
             return oTitleMap[sAiType] || "appTitle";
         },
 
-        /**
-          *
-         */
         onNavBack: function () {
             this._abortActiveStreamRequest();
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("home");
         },
 
-        // comment
         onToggleSidebar: function () {
             var oFlexibleColumnLayout = this.byId("flexibleColumnLayout");
             var sCurrentLayout = oFlexibleColumnLayout.getLayout();
 
             if (sCurrentLayout === "OneColumn" || sCurrentLayout === "MidColumnFullScreen") {
-                // comment
                 oFlexibleColumnLayout.setLayout("TwoColumnsMidExpanded");
             } else {
-                // comment
                 oFlexibleColumnLayout.setLayout("MidColumnFullScreen");
             }
 
@@ -335,7 +280,6 @@
                         var oBeginColumn = document.getElementById(sBaseId + "-beginColumn");
                         if (oBeginColumn) {
                             var oRect = oBeginColumn.getBoundingClientRect();
-                            // comment
                             bHitSeparator = Math.abs(oEvent.clientX - oRect.right) <= 14;
                         }
                     }
@@ -403,7 +347,6 @@
                 return;
             }
 
-            // comment
             var nBeginWidth = 22;
             oBeginColumn.style.flex = "0 0 " + nBeginWidth + "%";
             oBeginColumn.style.maxWidth = nBeginWidth + "%";
@@ -413,7 +356,6 @@
             oMidColumn.style.removeProperty("width");
         },
 
-        // comment
         _ensureCurrentConversation: function (bSilent) {
             var oModel = this.getView().getModel("chat");
             var sCurrentId = oModel.getProperty("/currentConversationId");
@@ -443,24 +385,21 @@
             var sCurrentAiType = oModel.getProperty("/currentAiType");
             var bSilent = vSilentFlag === true;
 
-            // comment
             var oNewConversation = {
                 id: this._generateUUID(),
                 title: oI18n.getText("newConversation"),
                 messages: [],
                 lastUpdate: this._formatDate(new Date()),
                 sessionId: null,
-                sessionInfo: null,  // initialized after first session response
+                sessionInfo: null,  // 首次收到会话响应后再初始化
                 attachments: [],
-                aiType: sCurrentAiType  // Ã¤Â¿ÂÃ¯Â¿Â½Ã¯Â¿Â½AIÃ§Â±Â»Ã¯Â¿Â½~9
+                aiType: sCurrentAiType  // 保留当前 AI 类型
             };
 
-            // comment
             var aAllConversations = this.getOwnerComponent()._aAllConversations || [];
             aAllConversations.unshift(oNewConversation);
             this.getOwnerComponent()._aAllConversations = aAllConversations;
 
-            // comment
             var aFilteredConversations = oModel.getProperty("/conversations") || [];
             aFilteredConversations.unshift(oNewConversation);
             oModel.setProperty("/conversations", aFilteredConversations);
@@ -469,11 +408,9 @@
             oModel.setProperty("/messages", []);
             this._setAttachmentsForConversation(oNewConversation);
 
-            // comment
             this._clearMessageContainer();
             this._showWelcomeBox();
 
-            // comment
             this.getOwnerComponent().saveConversationsToStorage();
 
             if (!bSilent) {
@@ -482,17 +419,13 @@
         },
 
 
-        // comment
         onConversationSelect: function (oEvent) {
             var oContext;
             var oSource = oEvent.getSource();
 
-            // comment
             if (oEvent.getParameter("listItem")) {
-                // comment
                 oContext = oEvent.getParameter("listItem").getBindingContext("chat");
             } else {
-                // comment
                 oContext = oSource.getBindingContext("chat");
             }
 
@@ -500,7 +433,6 @@
                 var oConversation = oContext.getObject();
                 var oModel = this.getView().getModel("chat");
 
-                // comment
                 var aConversations = oModel.getProperty("/conversations") || [];
                 var oFullConversation = aConversations.find(function (conv) {
                     return conv.id === oConversation.id;
@@ -508,34 +440,28 @@
 
                 if (oFullConversation) {
                     oModel.setProperty("/currentConversationId", oFullConversation.id);
-                    // comment
                     var aMessages = JSON.parse(JSON.stringify(oFullConversation.messages || []));
                     oModel.setProperty("/messages", aMessages);
                     this._setAttachmentsForConversation(oFullConversation);
 
-                    // comment
                     this._renderMessages();
 
-                    // comment
                     if (aMessages.length > 0) {
                         this._hideWelcomeBox();
                     } else {
                         this._showWelcomeBox();
                     }
 
-                    // comment
                     this._scrollToBottom();
                 }
             }
         },
 
-        // comment
         onEditConversationTitle: function (oEvent) {
             var that = this;
             var oSource = oEvent.getSource();
             var oContext = oSource.getBindingContext("chat");
 
-            // comment
             if (this._bEditDialogOpen) {
                 return;
             }
@@ -546,18 +472,15 @@
 
                 this._bEditDialogOpen = true;
 
-                // comment
                 var oI18n = this.getView().getModel("i18n").getResourceBundle();
 
                 sap.ui.require(["sap/m/Dialog", "sap/m/Input", "sap/m/Button"], function (Dialog, Input, Button) {
-                    // comment
                     var oInput = new Input({
                         value: oConversation.title,
                         width: "100%",
                         placeholder: oI18n.getText("editTitle")
                     });
 
-                    // comment
                     var oDialog = new Dialog({
                         title: oI18n.getText("editTitle"),
                         type: "Message",
@@ -593,7 +516,6 @@
             }
         },
 
-        // comment
         onDeleteConversation: function (oEvent) {
             var that = this;
             var oSource = oEvent.getSource();
@@ -611,21 +533,18 @@
                             var aConversations = oModel.getProperty("/conversations");
                             var sCurrentId = oModel.getProperty("/currentConversationId");
 
-                            // comment
                             aConversations = aConversations.filter(function (conv) {
                                 return conv.id !== oConversation.id;
                             });
 
                             oModel.setProperty("/conversations", aConversations);
 
-                            // comment
                             var aAllConversations = that.getOwnerComponent()._aAllConversations || [];
                             aAllConversations = aAllConversations.filter(function (conv) {
                                 return conv.id !== oConversation.id;
                             });
                             that.getOwnerComponent()._aAllConversations = aAllConversations;
 
-                            // comment
                             if (sCurrentId === oConversation.id) {
                                 oModel.setProperty("/currentConversationId", null);
                                 oModel.setProperty("/messages", []);
@@ -642,12 +561,10 @@
             }
         },
 
-        // comment
         onSendMessage: function () {
             var oModel = this.getView().getModel("chat");
             var oTextArea = this.byId("messageInput");
 
-            // comment
             var sMessage = oTextArea ? oTextArea.getValue() : oModel.getProperty("/inputValue");
             var bIsLoading = oModel.getProperty("/isLoading");
 
@@ -662,18 +579,15 @@
 
             var sTrimmedMessage = sMessage.trim();
             if (sTrimmedMessage.length > CHAT_REQUEST_LIMITS.MAX_USER_MESSAGE_LENGTH) {
-                MessageToast.show("æ¶ˆæ¯è¿‡é•¿ï¼Œè¯·ç²¾ç®€åŽé‡è¯•");
+                MessageToast.show("消息过长，请精简后重试");
                 return;
             }
 
-            // comment
             oModel.setProperty("/inputValue", sTrimmedMessage);
 
-            // comment
             this._ensureCurrentConversation(true);
             var oSendAttachmentPayload = this._extractReadyAttachmentsForSend();
 
-            // comment
             var oUserMessage = {
                 id: this._generateUUID(),
                 role: "user",
@@ -687,25 +601,19 @@
             aMessages.push(oUserMessage);
             oModel.setProperty("/messages", aMessages);
 
-            // comment
             oModel.setProperty("/inputValue", "");
             if (oTextArea) {
                 oTextArea.setValue("");
             }
 
-            // comment
             this._hideWelcomeBox();
 
-            // comment
             this._renderUserMessage(oUserMessage);
 
-            // comment
             this._persistCurrentConversationState();
 
-            // comment
             oModel.setProperty("/isLoading", true);
 
-            // comment
             var oAIMessage = {
                 id: this._generateUUID(),
                 role: "assistant",
@@ -715,13 +623,10 @@
             aMessages.push(oAIMessage);
             oModel.setProperty("/messages", aMessages);
 
-            // comment
             this._renderAIMessageContainer(oAIMessage.id);
 
-            // comment
             this._scrollToBottom();
 
-            // comment
             this._callAIStream(sTrimmedMessage, oAIMessage.id, oUserMessage.attachmentContext);
         },
 
@@ -786,18 +691,12 @@
         },
 
 
-        // comment
-        // comment
         _SESSION_CONFIG: {
-            MAX_ROUNDS: 50,        // upstream limit
-            EXPIRE_HOURS: 1,       // upstream expiration in hours
-            FALLBACK_ROUNDS: 10    // Ã¯Â¿Â½"Ã¯Â¿Â½Ã§ÂºÂ§Ã¯Â¿Â½Ã¯Â¿Â½Ã¤Â½Â¿Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½aÃ¯Â¿Â½} Ã¥ÂÂ²Ã¨Â½Â®Ã¯Â¿Â½"Ã¯Â¿Â½
+            MAX_ROUNDS: 50,        // 上游会话轮次上限
+            EXPIRE_HOURS: 1,       // 上游会话过期时长（小时）
+            FALLBACK_ROUNDS: 10    // 降级到 messages 模式时保留的轮次
         },
 
-        /**
-          *
-          *
-         */
         _callAIStream: function (sMessage, sMessageId, sAttachmentContext) {
             var that = this;
             var oModel = this.getView().getModel("chat");
@@ -812,15 +711,12 @@
                 delete oCurrentConv._sessionIdSaved;
             }
 
-            // comment
             var sSessionId = oCurrentConv ? oCurrentConv.sessionId : null;
             var oSessionInfo = oCurrentConv ? oCurrentConv.sessionInfo : null;
 
-            // comment
             var aCurrentMessages = oModel.getProperty("/messages") || [];
             var sAiType = oModel.getProperty("/currentAiType");
 
-            // comment
             var oRequestBody = this._buildRequestBody(sMessage, sSessionId, oSessionInfo, aCurrentMessages, sAiType, sAttachmentContext);
 
             var sFullContent = "";
@@ -856,7 +752,6 @@
                 }
             };
 
-            // comment
             fetch("/api/chat/stream", {
                 method: "POST",
                 headers: {
@@ -924,7 +819,7 @@
                         finalizeRequest();
                     },
                     onError: function (streamError) {
-                        console.error("æµè¯»å–é”™è¯¯:", streamError);
+                        console.error("流读取错误:", streamError);
                         if (that._isExiting) {
                             finalizeRequest();
                             return;
@@ -944,13 +839,12 @@
                     finalizeRequest();
                     return;
                 }
-                console.error("AIè°ƒç”¨é”™è¯¯:", error);
+                console.error("AI调用错误:", error);
                 if (!that._isExiting) {
                     MessageToast.show((error && error.message) ? error.message : oI18n.getText("aiServiceUnavailable"));
                 }
                 finalizeRequest();
 
-                // comment
                 if (that._isExiting) {
                     return;
                 }
@@ -958,13 +852,11 @@
             });
         },
 
-        // comment
         _renderUserMessage: function (oMessage) {
             var that = this;
             var oMessageList = this.byId("messageList");
             var oDomRef = oMessageList.getDomRef();
 
-            // comment
             if (!oDomRef) {
                 this._setManagedTimeout(function () {
                     that._renderUserMessage(oMessage);
@@ -972,7 +864,6 @@
                 return;
             }
 
-            // comment
             var sAttachmentStripHtml = this._buildMessageAttachmentStripHtml(oMessage.attachments);
             var sHtml = '<div class="messageItem userMessage" id="user-msg-' + oMessage.id + '">' +
                 '<div class="avatarContainer">' +
@@ -1000,7 +891,7 @@
                 var sMeta = "";
 
                 if (sSize && sExt) {
-                    sMeta = sSize + " Ãƒâ€šÃ‚Â· " + sExt;
+                    sMeta = sSize + " · " + sExt;
                 } else if (sSize) {
                     sMeta = sSize;
                 } else if (sExt) {
@@ -1017,13 +908,11 @@
             return '<div class="messageAttachmentStrip">' + aChips.join("") + '</div>';
         },
 
-        // comment
         _renderAIMessageContainer: function (sMessageId) {
             var that = this;
             var oMessageList = this.byId("messageList");
             var oDomRef = oMessageList.getDomRef();
 
-            // comment
             if (!oDomRef) {
                 this._setManagedTimeout(function () {
                     that._renderAIMessageContainer(sMessageId);
@@ -1045,7 +934,7 @@
 
             oDomRef.insertAdjacentHTML("beforeend", sHtml);
 
-            // Add a copy button area for assistant messages
+            // 为助手消息增加整段复制按钮区域
             var oActionArea = document.getElementById("ai-actions-" + sMessageId);
             if (oActionArea) {
                 var oI18n = this.getView().getModel("i18n").getResourceBundle();
@@ -1056,7 +945,7 @@
                 var oCopyMsgBtn = document.createElement("button");
                 oCopyMsgBtn.className = "copyMessageBtn";
                 oCopyMsgBtn.title = sCopyText;
-                // SAP-icons: &#xe0ec; (copy)
+                // SAP 图标编码：&#xe0ec;（复制）
                 oCopyMsgBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
 
                 oCopyMsgBtn.onclick = function () {
@@ -1087,7 +976,6 @@
             }
         },
 
-        // comment
         _updateAIMessageContent: function (sMessageId, sContent, bFinalize) {
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
@@ -1101,28 +989,23 @@
             var oTextElement = document.getElementById("ai-text-" + sMessageId);
 
             if (oTextElement) {
-                // comment
                 var sRenderedContent = this._renderMarkdown(sContent);
                 oTextElement.innerHTML = sRenderedContent;
 
                 if (bFinalize !== false) {
-                    // comment
                     this._highlightCode(oTextElement);
 
-                    // comment
                     this._addCopyButtons(oTextElement);
                 }
             }
         },
 
 
-        // comment
         _finalizeAIMessage: function (sMessageId, sContent) {
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
             var sCurrentId = oModel.getProperty("/currentConversationId");
 
-            // comment
             var oMessage = aMessages.find(function (msg) {
                 return msg.id === sMessageId;
             });
@@ -1131,36 +1014,29 @@
                 oMessage.content = sContent;
             }
 
-            // comment
             var aConversations = oModel.getProperty("/conversations") || [];
             var iConvIndex = aConversations.findIndex(function (conv) {
                 return conv.id === sCurrentId;
             });
 
             if (iConvIndex >= 0) {
-                // comment
                 aConversations[iConvIndex].messages = JSON.parse(JSON.stringify(aMessages));
                 aConversations[iConvIndex].lastUpdate = this._formatDate(new Date());
 
-                // comment
                 if (aConversations[iConvIndex].sessionId) {
                     if (!aConversations[iConvIndex].sessionInfo) {
-                        // comment
                         aConversations[iConvIndex].sessionInfo = {
                             createdAt: new Date().toISOString(),
                             roundCount: 1
                         };
                     } else {
-                        // comment
                         aConversations[iConvIndex].sessionInfo.roundCount++;
                     }
-                    console.log("[AI] å½“å‰è½®æ¬¡: " + aConversations[iConvIndex].sessionInfo.roundCount);
+                    console.log("[AI] 当前轮次: " + aConversations[iConvIndex].sessionInfo.roundCount);
                 }
 
-                // comment
                 delete aConversations[iConvIndex]._sessionIdSaved;
 
-                // comment
                 var oI18n = this.getView().getModel("i18n").getResourceBundle();
                 var sNewConvTitle = oI18n.getText("newConversation");
                 if (aMessages.length <= 2 && aConversations[iConvIndex].title === sNewConvTitle) {
@@ -1169,25 +1045,17 @@
                 }
             }
 
-            // comment
             oModel.setProperty("/conversations", aConversations);
             oModel.setProperty("/messages", aMessages);
 
-            // comment
             this._syncToAllConversations(aConversations);
 
-            // comment
             this.getOwnerComponent().saveConversationsToStorage();
         },
 
-        /**
-          *
-          *
-         */
         _syncToAllConversations: function (aFilteredConversations) {
             var aAllConversations = this.getOwnerComponent()._aAllConversations || [];
 
-            // comment
             aFilteredConversations.forEach(function (oConv) {
                 var iIndex = aAllConversations.findIndex(function (c) {
                     return c.id === oConv.id;
@@ -1200,10 +1068,8 @@
             this.getOwnerComponent()._aAllConversations = aAllConversations;
         },
 
-        // comment
         _renderMarkdown: function (sContent) {
             if (typeof marked !== "undefined") {
-                // comment
                 marked.setOptions({
                     breaks: true,
                     gfm: true
@@ -1214,7 +1080,6 @@
             return Utils.escapeHtml(sContent);
         },
 
-        // comment
         _highlightCode: function (oElement) {
             if (typeof hljs !== "undefined") {
                 var aCodeBlocks = oElement.querySelectorAll("pre code");
@@ -1225,7 +1090,6 @@
         },
 
 
-        // comment
         _addCopyButtons: function (oElement) {
             var that = this;
             var aPreBlocks = oElement.querySelectorAll("pre");
@@ -1235,20 +1099,16 @@
             var sCopyFailedText = oI18n.getText("copyFailed");
 
             aPreBlocks.forEach(function (pre) {
-                // comment
                 if (pre.parentNode && pre.parentNode.classList && pre.parentNode.classList.contains("codeBlockWrapper")) {
                     return;
                 }
 
-                // comment
                 var oCopyBtn = document.createElement("button");
                 oCopyBtn.className = "copyButton";
-                // comment
                 oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
                 oCopyBtn.onclick = function () {
                     var sCode = pre.querySelector("code") ? pre.querySelector("code").textContent : pre.textContent;
                     Utils.copyTextToClipboard(sCode).then(function () {
-                        // comment
                         oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe05b;</span> ' + sCopiedText;
                         that._setManagedTimeout(function () {
                             oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
@@ -1258,7 +1118,6 @@
                     });
                 };
 
-                // comment
                 var oWrapper = document.createElement("div");
                 oWrapper.className = "codeBlockWrapper";
                 pre.parentNode.insertBefore(oWrapper, pre);
@@ -1267,16 +1126,13 @@
             });
         },
 
-        // comment
         _renderMessages: function () {
             var that = this;
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
 
-            // comment
             this._clearMessageContainer();
 
-            // comment
             aMessages.forEach(function (oMessage) {
                 if (oMessage.role === "user") {
                     that._renderUserMessage(oMessage);
@@ -1289,7 +1145,6 @@
             });
         },
 
-        // comment
         _clearMessageContainer: function () {
             var oMessageList = this.byId("messageList");
             var oDomRef = oMessageList.getDomRef();
@@ -1299,7 +1154,6 @@
             }
         },
 
-        // comment
         _scrollToBottom: function () {
             var oScrollContainer = this.byId("messageScrollContainer");
 
@@ -1313,30 +1167,18 @@
             }
         },
 
-        /**
-          *
-          *
-          *
-          *
-          *
-          *
-          *
-          *
-         */
         _buildRequestBody: function (sMessage, sSessionId, oSessionInfo, aMessages, sAiType, sAttachmentContext) {
             var bUseSessionId = this._shouldUseSessionId(sSessionId, oSessionInfo);
 
-            // comment
             var sContextText = sAttachmentContext || this._getReadySessionParsedTexts();
             var sFinalMessage = this._buildPromptWithContext(sMessage, sContextText);
 
             if (sContextText) {
-                console.log("[AI] é™„åŠ äº†å‰ç«¯è§£æžä¸Šä¸‹æ–‡ï¼ŒåŽŸå§‹é•¿åº¦: " + sContextText.length + "ï¼Œæœ€ç»ˆPrompté•¿åº¦: " + sFinalMessage.length);
+                console.log("[AI] 附加了前端解析上下文，原始长度: " + sContextText.length + "，最终Prompt长度: " + sFinalMessage.length);
             }
 
             if (bUseSessionId) {
-                // comment
-                console.log("[AI] ä½¿ç”¨ session_id æ¨¡å¼");
+                console.log("[AI] 使用 session_id 模式");
                 return {
                     message: sFinalMessage,
                     sessionId: sSessionId,
@@ -1344,8 +1186,7 @@
                     aiType: sAiType
                 };
             } else if (aMessages && aMessages.length > 2) {
-                // comment
-                console.log("[AI] ä½¿ç”¨ messages æ¨¡å¼ï¼ˆé™çº§ï¼‰");
+                console.log("[AI] 使用 messages 模式（降级）");
                 var aHistoryMessages = this._buildMessagesArray(aMessages);
                 return {
                     message: sFinalMessage,
@@ -1354,8 +1195,7 @@
                     aiType: sAiType
                 };
             } else {
-                // comment
-                console.log("[AI] æ–°å¯¹è¯æ¨¡å¼");
+                console.log("[AI] 新对话模式");
                 return {
                     message: sFinalMessage,
                     aiType: sAiType
@@ -1363,12 +1203,6 @@
             }
         },
 
-        /**
-          *
-          *
-          *
-          *
-         */
         _buildPromptWithContext: function (sMessage, sContextText) {
             var sSafeMessage = typeof sMessage === "string" ? sMessage : "";
             var sSafeContext = typeof sContextText === "string" ? sContextText : "";
@@ -1378,8 +1212,8 @@
                 return sSafeMessage.slice(0, nPromptLimit);
             }
 
-            var sPrefix = "åŸºäºŽä»¥ä¸‹å‚è€ƒèµ„æ–™ï¼š\n\n";
-            var sMiddle = "\n\n--- èµ„æ–™ç»“æŸ ---\n\nç”¨æˆ·é—®é¢˜ï¼š\n";
+            var sPrefix = "基于以下参考资料：\n\n";
+            var sMiddle = "\n\n--- 资料结束 ---\n\n用户问题：\n";
             var nAvailableContext = nPromptLimit - sPrefix.length - sMiddle.length - sSafeMessage.length;
 
             if (nAvailableContext <= 0) {
@@ -1391,7 +1225,7 @@
         },
 
         _extractBackendErrorMessage: function (sRawError, sFallback) {
-            var sDefaultText = sFallback || "è¯·æ±‚å¤±è´¥ï¼Œè¯·ç¨åŽé‡è¯•";
+            var sDefaultText = sFallback || "请求失败，请稍后重试";
             if (!sRawError) {
                 return sDefaultText;
             }
@@ -1408,7 +1242,7 @@
                     return sPayloadError;
                 }
             } catch {
-                // ignore parse error and fallback to plain text
+                // 忽略解析错误，回退为纯文本
             }
 
             return sRawText;
@@ -1420,24 +1254,21 @@
             }
 
             if (!oSessionInfo) {
-                // comment
                 return true;
             }
 
-            // comment
             if (oSessionInfo.roundCount >= this._SESSION_CONFIG.MAX_ROUNDS) {
-                console.log("[AI] session_id å·²è¾¾è½®æ¬¡ä¸Šé™ï¼Œåˆ‡æ¢åˆ° messages æ¨¡å¼");
+                console.log("[AI] session_id 已达轮次上限，切换到 messages 模式");
                 return false;
             }
 
-            // comment
             if (oSessionInfo.createdAt) {
                 var nCreatedTime = new Date(oSessionInfo.createdAt).getTime();
                 var nNow = Date.now();
                 var nExpireTime = this._SESSION_CONFIG.EXPIRE_HOURS * 60 * 60 * 1000;
 
                 if (nNow - nCreatedTime > nExpireTime) {
-                    console.log("[AI] session_id å·²è¿‡æœŸï¼Œåˆ‡æ¢åˆ° messages æ¨¡å¼");
+                    console.log("[AI] session_id 已过期，切换到 messages 模式");
                     return false;
                 }
             }
@@ -1445,33 +1276,23 @@
             return true;
         },
 
-        /**
-          *
-          *
-          *
-          *
-         */
         _buildMessagesArray: function (aMessages) {
-            // comment
             var aHistory = aMessages.slice(0, -2);
             var that = this;
 
-            // comment
             var nMaxRounds = this._SESSION_CONFIG.FALLBACK_ROUNDS;
-            var nMaxMessages = nMaxRounds * 2;  // Ã¦Â¯ÂÃ¨Â½Â®Ã¯Â¿Â½R&Ã¥ÂÂ«Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½Ã†Â·Ã¯Â¿Â½RAIÃ¯Â¿Â½Ã¤Â¸Â¬Ã¦ÂÂ¡
+            var nMaxMessages = nMaxRounds * 2;  // 一轮 = 一条用户消息 + 一条助手消息
             if (aHistory.length > nMaxMessages) {
                 aHistory = aHistory.slice(-nMaxMessages);
             }
 
-            // comment
             return aHistory.filter(function (msg) {
-                return msg.content;  // Ã¯Â¿Â½!Ã¦Â»Â¤Ã§Â©ÂºÃ¯Â¿Â½ &Ã¥Â®Â¹
+                return msg.content;  // 过滤空内容
             }).map(function (msg) {
                 var sContent = msg.content;
                 if (msg.role === "user" && msg.attachmentContext) {
                     sContent = that._buildPromptWithContext(sContent, msg.attachmentContext);
                 }
-                // comment
                 if (msg.role === "assistant" && sContent.length > 1000) {
                     sContent = sContent.substring(0, 1000) + "...";
                 }
@@ -1482,7 +1303,6 @@
             });
         },
 
-        // comment
         _generateUUID: function () {
             return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
                 var r = Math.random() * 16 | 0;
@@ -1491,7 +1311,6 @@
             });
         },
 
-        // comment
         _formatDate: function (oDate) {
             var sYear = oDate.getFullYear();
             var sMonth = String(oDate.getMonth() + 1).padStart(2, "0");
@@ -1537,7 +1356,6 @@
             }
         },
 
-        // comment
         _hideWelcomeBox: function () {
             var oWelcomeBox = this.byId("welcomeBox");
             if (oWelcomeBox) {
@@ -1545,7 +1363,6 @@
             }
         },
 
-        // comment
         _showWelcomeBox: function () {
             var oWelcomeBox = this.byId("welcomeBox");
             if (oWelcomeBox) {
@@ -1606,15 +1423,9 @@
         },
 
 
-        // comment
-
-        /**
-          *
-         */
         _bindFileInputChange: function () {
             var that = this;
 
-            // comment
             this._setManagedTimeout(function () {
                 var oFileInput = document.getElementById("hiddenFileInput");
                 if (!oFileInput) {
@@ -1640,29 +1451,25 @@
         },
 
         /**
-         * Click upload button and trigger the native file input
+         * 点击上传按钮并触发原生文件选择框
          */
         onUploadFile: function () {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
 
-            // comment
             if (aAttachments.length >= FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION) {
-                MessageToast.show(oI18n.getText("maxFilesReached") || "æœ€å¤šåªå…è®¸ä¸Šä¼  " + FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION + " ä¸ªæ–‡ä»¶");
+                MessageToast.show(oI18n.getText("maxFilesReached") || "最多只允许上传 " + FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION + " 个文件");
                 return;
             }
 
             var oFileInput = document.getElementById("hiddenFileInput");
             if (oFileInput) {
-                oFileInput.value = "";  // Ã¯Â¿Â½&Ã§Â©ÂºÃ¤Â»Â¥Ã¯Â¿Â½&Ã¯Â¿Â½Ã¨Â®Â¸Ã¯Â¿Â½!Ã¯Â¿Â½Ã¥Â¤ÂÃ¯Â¿Â½0Ã¯Â¿Â½9Ã¯Â¿Â½Ã¯Â¿Â½RÃ¤Â¸Â¬Ã¯Â¿Â½!Ã¤Â»Â¶
+                oFileInput.value = "";  // 清空输入框值，确保重复选择同一文件也会触发变更事件
                 oFileInput.click();
             }
         },
 
-        /**
-          *
-         */
         _handleFileSelect: function (oEvent) {
             var oFile = oEvent.target.files[0];
             var oModel = this.getView().getModel("chat");
@@ -1672,30 +1479,27 @@
                 return;
             }
 
-            // Ensure a conversation exists so attachments are retained for first message.
+            // 确保先创建会话，避免首条消息前的附件丢失。
             this._ensureCurrentConversation(true);
 
-            // comment
             if (oFile.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
                 MessageBox.error(
-                    (oI18n.getText("fileTooLarge") || "æ–‡ä»¶è¿‡å¤§") +
-                    "ï¼Œæœ€å¤§å…è®¸ä¸º " + this._formatFileSize(FILE_UPLOAD_CONFIG.MAX_FILE_SIZE)
+                    (oI18n.getText("fileTooLarge") || "文件过大") +
+                    "，最大允许为 " + this._formatFileSize(FILE_UPLOAD_CONFIG.MAX_FILE_SIZE)
                 );
                 return;
             }
 
-            // comment
             var sFileName = oFile.name || "";
             var nLastDot = sFileName.lastIndexOf(".");
             var sExt = nLastDot >= 0 ? sFileName.substring(nLastDot).toLowerCase() : "";
             if (!sExt || !FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(sExt)) {
                 MessageBox.error(
-                    (oI18n.getText("unsupportedFileType") || "ä¸æ”¯æŒçš„æ–‡ä»¶ç±»åž‹") + ": " + (sExt || sFileName || "unknown")
+                    (oI18n.getText("unsupportedFileType") || "不支持的文件类型") + ": " + (sExt || sFileName || "unknown")
                 );
                 return;
             }
 
-            // comment
             var oAttachment = {
                 id: this._generateUUID(),
                 file: oFile,
@@ -1705,28 +1509,21 @@
                 status: 'uploading',
                 progress: 0,
                 fileId: null,
-                message: oI18n.getText("uploading") || "ä¸Šä¼ ä¸­..."
+                message: oI18n.getText("uploading") || "上传中..."
             };
 
-            // comment
             var aAttachments = oModel.getProperty("/attachments") || [];
             aAttachments.push(oAttachment);
             oModel.setProperty("/attachments", aAttachments);
             this._updateCurrentConversationAttachments(aAttachments);
 
-            // comment
             this._renderAttachmentCard(oAttachment);
 
-            // comment
             this._updateAttachmentAreaVisibility();
 
-            // comment
             this._uploadFile(oAttachment);
         },
 
-        /**
-          *
-         */
         _loadScript: function (sUrl, sGlobalVar) {
             return new Promise(function (resolve, reject) {
                 if (window[sGlobalVar]) {
@@ -1736,13 +1533,13 @@
                 var script = document.createElement('script');
                 script.src = sUrl;
                 script.onload = function () { resolve(window[sGlobalVar]); };
-                script.onerror = function () { reject(new Error("åŠ è½½è„šæœ¬å¤±è´¥: " + sUrl)); };
+                script.onerror = function () { reject(new Error("加载脚本失败: " + sUrl)); };
                 document.head.appendChild(script);
             });
         },
 
         /**
-         * Upload flow uses local frontend parsing instead of backend parsing
+         * 上传流程在前端本地解析，不走后端解析
          */
         _uploadFile: function (oAttachment) {
             var that = this;
@@ -1751,7 +1548,7 @@
             that._updateAttachmentCard(oAttachment.id, {
                 status: 'processing',
                 progress: 50,
-                message: oI18n.getText("parsing") || "è§£æžä¸­..."
+                message: oI18n.getText("parsing") || "解析中..."
             });
             that._updateAttachmentInModel(oAttachment.id, {
                 status: 'processing'
@@ -1762,32 +1559,29 @@
                     that._updateAttachmentCard(oAttachment.id, {
                         status: 'ready',
                         progress: 100,
-                        message: oI18n.getText("ready") || "å·²å°±ç»ª"
+                        message: oI18n.getText("ready") || "已就绪"
                     });
                     that._updateAttachmentInModel(oAttachment.id, {
                         status: 'ready',
                         parsedText: sParsedText
                     });
-                    MessageToast.show(oAttachment.fileName + " " + (oI18n.getText("parseComplete") || "è§£æžå®Œæˆ"));
+                    MessageToast.show(oAttachment.fileName + " " + (oI18n.getText("parseComplete") || "解析完成"));
                 })
                 .catch(function (error) {
-                    console.error("[FileParse] å‰ç«¯è§£æžé”™è¯¯:", error);
+                    console.error("[FileParse] 前端解析错误:", error);
                     that._updateAttachmentCard(oAttachment.id, {
                         status: 'error',
                         progress: 0,
-                        message: error.message || "è§£æžå¤±è´¥"
+                        message: error.message || "解析失败"
                     });
                     that._updateAttachmentInModel(oAttachment.id, {
                         status: 'error',
                         message: error.message
                     });
-                    MessageToast.show(error.message || "æ–‡ä»¶è§£æžå¤±è´¥");
+                    MessageToast.show(error.message || "文件解析失败");
                 });
         },
 
-        /**
-          *
-         */
         _parseFileLocally: function (oFile, sExt) {
             var that = this;
             return new Promise(function (resolve, reject) {
@@ -1856,14 +1650,11 @@
                             reader.readAsArrayBuffer(oFile);
                         }).catch(reject);
                 } else {
-                    reject(new Error("ä¸æ”¯æŒåœ¨æµè§ˆå™¨ä¸­ç›´æŽ¥è§£æžæ­¤ç±»åž‹çš„æ–‡ä»¶: " + sExt));
+                    reject(new Error("不支持在浏览器中直接解析此类型的文件: " + sExt));
                 }
             });
         },
 
-        /**
-          *
-         */
         _renderAttachmentCard: function (oAttachment) {
             var that = this;
             var oAttachmentList = this.byId("attachmentList");
@@ -1899,14 +1690,13 @@
                 '<div class="progressBar ' + sProgressClass + '" id="file-progress-' + oAttachment.id + '" style="width: ' + oAttachment.progress + '%"></div>' +
                 '</div>' +
                 '</div>' +
-                '<button class="fileDeleteBtn" id="file-delete-' + oAttachment.id + '" title="ÃƒÂ¥Ã‹â€  ÃƒÂ©Ã¢â€žÂ¢Ã‚Â¤">' +
+                '<button class="fileDeleteBtn" id="file-delete-' + oAttachment.id + '" title="删除">' +
                 '<span class="sapUiIcon deleteIcon" style="font-family: SAP-icons">&#xe03e;</span>' +
                 '</button>' +
                 '</div>';
 
             oDomRef.insertAdjacentHTML("beforeend", sHtml);
 
-            // comment
             var oDeleteBtn = document.getElementById("file-delete-" + oAttachment.id);
             if (oDeleteBtn) {
                 oDeleteBtn.addEventListener("click", function () {
@@ -1915,9 +1705,6 @@
             }
         },
 
-        /**
-          *
-         */
         _updateAttachmentCard: function (sAttachmentId, oUpdates) {
             var oStatusEl = document.getElementById("file-status-" + sAttachmentId);
             var oProgressEl = document.getElementById("file-progress-" + sAttachmentId);
@@ -1949,9 +1736,6 @@
             }
         },
 
-        /**
-          *
-         */
         _updateAttachmentInModel: function (sAttachmentId, oUpdates) {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
@@ -1967,33 +1751,24 @@
             }
         },
 
-        /**
-          *
-         */
         _removeAttachment: function (sAttachmentId) {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
 
-            // comment
             aAttachments = aAttachments.filter(function (a) {
                 return a.id !== sAttachmentId;
             });
             oModel.setProperty("/attachments", aAttachments);
             this._updateCurrentConversationAttachments(aAttachments);
 
-            // comment
             var oCardEl = document.getElementById("file-card-" + sAttachmentId);
             if (oCardEl) {
                 oCardEl.remove();
             }
 
-            // comment
             this._updateAttachmentAreaVisibility();
         },
 
-        /**
-          *
-         */
         _updateAttachmentAreaVisibility: function () {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
@@ -2004,17 +1779,11 @@
             }
         },
 
-        /**
-          *
-         */
         _getFileTypeIcon: function (sExt) {
             var sLowerExt = (sExt || '').toLowerCase();
             return FILE_TYPE_ICONS[sLowerExt] || FILE_TYPE_ICONS['default'];
         },
 
-        /**
-          *
-         */
         _formatFileSize: function (nBytes) {
             if (nBytes < 1024) {
                 return nBytes + " B";
@@ -2042,7 +1811,7 @@
                     });
 
                     if (oAttachment.parsedText) {
-                        aContextBlocks.push("ã€æ–‡ä»¶ï¼š" + oAttachment.fileName + "ã€‘\n" + oAttachment.parsedText);
+                        aContextBlocks.push("【文件：" + oAttachment.fileName + "】\n" + oAttachment.parsedText);
                     }
                 } else {
                     aRemainingAttachments.push(oAttachment);
@@ -2062,9 +1831,6 @@
             };
         },
 
-        /**
-          *
-         */
         _getReadySessionParsedTexts: function () {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
@@ -2072,21 +1838,17 @@
 
             aAttachments.forEach(function (a) {
                 if (a.status === 'ready' && a.parsedText) {
-                    sContext += "ã€æ–‡ä»¶ï¼š" + a.fileName + "ã€‘\n" + a.parsedText + "\n\n";
+                    sContext += "【文件：" + a.fileName + "】\n" + a.parsedText + "\n\n";
                 }
             });
             return sContext.trim();
         },
 
-        /**
-          *
-         */
         _clearAttachments: function () {
             var oModel = this.getView().getModel("chat");
             oModel.setProperty("/attachments", []);
             this._updateCurrentConversationAttachments([]);
 
-            // comment
             this._clearAttachmentDom();
             this._updateAttachmentAreaVisibility();
         },
@@ -2129,6 +1891,7 @@
         }
     });
 });
+
 
 
 

@@ -14,12 +14,12 @@ builder:
     excludes:
       - /test/**
       - /localService/**
-      # 关键：排除这个库，避免 specVersion 4.0+ 的 top-level-scope/eval 限制
+      # 排除该库，避免 specVersion 4.0+ 下 top-level-scope/eval 限制触发构建错误
       - /webapp/lib/highlight.min.js
-      # 保险：如果构建输出路径按命名空间引用，也一并排除
+      # 兜底：若构建输出按命名空间路径引用，也同步排除
       - /com/ai/assistant/aichatapp/lib/highlight.min.js
 
-  # ✅ 关键：专门从 Component-preload 打包中排除，否则 generateComponentPreload 仍会报错
+  # 从 Component-preload 中显式排除，避免 generateComponentPreload 报错
   componentPreload:
     excludes:
       - "com/ai/assistant/aichatapp/lib/highlight.min.js"

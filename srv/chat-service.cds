@@ -1,6 +1,6 @@
-// AI聊天服务定义
-// 注意：流式响应通过server.js中的自定义Express路由实现（/api/chat/stream）
+// AI 聊天服务定义
+// 说明：流式响应由 `server.js` 中自定义 Express 路由 `/api/chat/stream` 提供
 service ChatService @(path: '/api/chat') {
-    // 发送消息到AI的action（非流式，备用）
+    // 非流式备用 Action：发送消息并返回完整文本响应
     action sendMessage(message: String, sessionId: String) returns String;
 }

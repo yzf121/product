@@ -22,7 +22,7 @@ modules:
   build-parameters:
     builder: npm
 
-# HTML5 应用部署器
+# HTML5 应用部署模块
 - name: abap-clean-core-ai-fiori-new-app-deployer
   type: com.sap.application.content
   path: gen
@@ -38,7 +38,7 @@ modules:
       name: comaiassistantaichatapp
       target-path: app/
 
-# HTML5 前端应用
+# HTML5 前端模块
 - name: comaiassistantaichatapp
   type: html5
   path: app/ai-chat-gui
@@ -50,7 +50,7 @@ modules:
     - npm run build:cf
     supported-platforms: []
 
-# Destination Content 配置（用于 Work Zone 访问）
+# Destination Content 配置（用于 Work Zone 访问入口）
 - name: abap-clean-core-ai-fiori-new-destination-content
   type: com.sap.application.content
   requires:
@@ -100,7 +100,7 @@ resources:
     service: xsuaa
     service-plan: application
 
-# Destination 服务
+# Destination 服务实例
 - name: abap-clean-core-ai-fiori-new-destination
   type: org.cloudfoundry.managed-service
   requires:

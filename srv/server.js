@@ -3,15 +3,14 @@ const express = require('express');
 const net = require('net');
 require('dotenv').config();
 
-// comment
-// comment
+// 通用百炼 API 密钥（默认助手共用）
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 
-// Dedicated API keys for FSD->TSD assistants (optional)
+// FSD->TSD 助手可选独立 API 密钥（未配置时回退通用密钥）
 const DASHSCOPE_API_KEY_FSD2TSD_I = process.env.DASHSCOPE_API_KEY_FSD2TSD_I;
 const DASHSCOPE_API_KEY_FSD2TSD_E = process.env.DASHSCOPE_API_KEY_FSD2TSD_E;
 
-// comment
+// 各助手映射到对应的百炼应用 ID
 const AI_APP_ID_MAP = {
     'abap-clean-core': process.env.DASHSCOPE_APP_ID_ABAP || process.env.DASHSCOPE_APP_ID,
     'cpi': process.env.DASHSCOPE_APP_ID_CPI,
@@ -24,15 +23,15 @@ const AI_APP_ID_MAP = {
     'diagram': process.env.DASHSCOPE_APP_ID_DIAGRAM
 };
 
-// comment
+// 仅部分助手使用独立密钥，其余助手统一使用通用密钥
 const AI_API_KEY_MAP = {
     'fsd2tsd-i': DASHSCOPE_API_KEY_FSD2TSD_I,
     'fsd2tsd-e': DASHSCOPE_API_KEY_FSD2TSD_E
 };
 
-// comment
+// 默认应用 ID（当 aiType 未配置时使用）
 const DEFAULT_APP_ID = process.env.DASHSCOPE_APP_ID || process.env.DASHSCOPE_APP_ID_ABAP;
-// comment
+// 上游请求超时时间（毫秒）
 const API_TIMEOUT = 60000;
 
 function parsePositiveInt(value, fallbackValue) {
@@ -51,7 +50,7 @@ const CHAT_SSE_BUFFER_MAX_LENGTH = parsePositiveInt(process.env.CHAT_SSE_BUFFER_
 const CHAT_UPSTREAM_ERROR_MAX_LENGTH = parsePositiveInt(process.env.CHAT_UPSTREAM_ERROR_MAX_LENGTH || '300', 300);
 
 /**
-  *
+ * 根据助手类型选择应用 ID；未命中时回退默认应用
  */
 function getAppIdByType(aiType) {
     const appId = AI_APP_ID_MAP[aiType];
@@ -64,7 +63,7 @@ function getAppIdByType(aiType) {
 }
 
 /**
-  *
+ * 根据助手类型选择 API 密钥；未命中时回退通用密钥
  */
 function getApiKeyByType(aiType) {
     const specialKey = AI_API_KEY_MAP[aiType];
@@ -76,7 +75,7 @@ function getApiKeyByType(aiType) {
 }
 
 /**
-  *
+ * 组装百炼 completion API 地址
  */
 function buildApiUrl(appId) {
     return `https://dashscope.aliyuncs.com/api/v1/apps/${appId}/completion`;
@@ -190,7 +189,7 @@ function extractUpstreamHttpErrorMessage(rawText, statusCode) {
             return normalizedMatch;
         }
     } catch {
-        // ignore parse error and fallback to plain text
+        // JSON 解析失败时回退为纯文本错误信息
     }
 
     const plainTextError = normalizeErrorMessage(normalizedRawText);
@@ -201,12 +200,12 @@ function extractUpstreamHttpErrorMessage(rawText, statusCode) {
     return `AI service request failed (HTTP ${statusCode})`;
 }
 
-// comment
+// 启动时检查核心 AI 配置，便于尽早发现环境变量缺失
 if (!DEFAULT_APP_ID || !DASHSCOPE_API_KEY) {
     console.warn("Warning: DashScope API configuration is incomplete. Please check .env");
 }
 
-// Print configured assistant mappings
+// 打印已配置的助手映射，便于排查配置问题
 console.log("[AI] Configured assistants:");
 Object.entries(AI_APP_ID_MAP).forEach(([type, id]) => {
     if (id) {
@@ -214,7 +213,7 @@ Object.entries(AI_APP_ID_MAP).forEach(([type, id]) => {
     }
 });
 
-// comment
+// 本地端口探测：避免固定端口被占用导致服务无法启动
 
 function isPortAvailable(port) {
     return new Promise((resolve) => {
@@ -245,10 +244,10 @@ async function findAvailablePort(startPort, maxAttempts = 10) {
     throw new Error(`No available port found (tried ${startPort} - ${startPort + maxAttempts - 1})`);
 }
 
-// ===================== CDS server bootstrap extensions =====================
+// ===================== CDS 启动扩展（流式聊天端点） =====================
 
 cds.on('bootstrap', (app) => {
-    // comment
+    // 为流式聊天接口挂载 JSON 解析器，并统一处理请求体异常
     app.use('/api/chat/stream', express.json({ limit: CHAT_REQUEST_LIMIT }));
     app.use('/api/chat/stream', (err, _req, res, next) => {
         if (!err) {
@@ -266,11 +265,7 @@ cds.on('bootstrap', (app) => {
         return next(err);
     });
 
-    // comment
-
-    /**
-      *
-     */
+    // 自定义流式聊天端点（SSE）
     app.post('/api/chat/stream', async (req, res) => {
         const message = sanitizeMessageContent(req.body?.message);
         const sessionId = normalizeSessionId(req.body?.sessionId);
@@ -286,7 +281,7 @@ cds.on('bootstrap', (app) => {
             return res.status(413).json({ error: "Message is too long. Please shorten and retry" });
         }
 
-        // comment
+        // 设置 SSE 响应头
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
@@ -355,7 +350,7 @@ cds.on('bootstrap', (app) => {
         try {
             let requestBody;
 
-            // comment
+            // 优先使用 session_id；其次使用 messages；最后按新会话模式请求
             if (useSessionId) {
                 console.log(`[AI] Using session_id mode, round: ${sessionInfo?.roundCount || 0}`);
                 requestBody = {
@@ -455,7 +450,7 @@ cds.on('bootstrap', (app) => {
                         safeWrite({ text: data.output.text, sessionId: data.output.session_id });
                     }
                 } catch (e) {
-                    // comment
+                    // 上游可能返回不完整事件片段，忽略本次并继续读取
                     console.warn("[AI] Failed to parse upstream SSE chunk:", e.message);
                 }
             };
@@ -512,7 +507,7 @@ cds.on('bootstrap', (app) => {
             if (error.name === 'AbortError' && clientDisconnected) {
                 console.log("[AI] Client disconnected, upstream request aborted");
             } else if (error.name === 'AbortError' && abortedBySseBufferLimit) {
-                // comment
+                // 已在缓冲区保护分支写回错误并中止，此处无需重复处理
             } else if (error.name === 'AbortError') {
                 console.error("API request timed out");
                 safeWrite({ error: "AI service timed out. Please retry later" });
@@ -527,7 +522,7 @@ cds.on('bootstrap', (app) => {
         }
     });
 
-    // comment
+    // 处理浏览器预检请求（CORS）
     app.options('/api/chat/stream', (_req, res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -536,14 +531,14 @@ cds.on('bootstrap', (app) => {
     });
 });
 
-// comment
+// 服务启动后输出访问地址
 cds.on('listening', ({ server, url }) => {
     const port = server.address().port;
     console.log(`[cds] - Server started: ${url}`);
     console.log(`[cds] - Open app: http://localhost:${port}/ai-chat-gui/webapp/index.html`);
 });
 
-// comment
+// 若未显式指定 PORT，则自动寻找可用端口再启动 CDS
 const originalServer = cds.server;
 module.exports = async function (options) {
     const envPort = process.env.PORT;
