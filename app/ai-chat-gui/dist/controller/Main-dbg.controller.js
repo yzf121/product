@@ -1,4 +1,4 @@
-sap.ui.define([
+﻿sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
@@ -6,16 +6,16 @@ sap.ui.define([
 ], function (Controller, MessageBox, MessageToast, Utils) {
     "use strict";
 
-    // 文件上传配置
+    // comment
     var FILE_UPLOAD_CONFIG = {
         MAX_FILE_SIZE: 50 * 1024 * 1024,  // 50MB
         MAX_FILES_PER_SESSION: 5,
-        ALLOWED_EXTENSIONS: ['.pdf', '.doc', '.docx', '.txt', '.md', '.json', '.xml', '.csv', '.xlsx', '.xls', '.ppt', '.pptx'],
-        POLL_INTERVAL: 2000,              // 轮询间隔2秒
-        MAX_POLL_ATTEMPTS: 60             // 最大轮询次数（2分钟）
+        ALLOWED_EXTENSIONS: ['.pdf', '.docx', '.txt', '.md', '.json', '.xml', '.csv', '.xlsx', '.xls'],
+        POLL_INTERVAL: 2000,              // Ã¨Â½Â®Ã¨Â¯Â¢Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½a2ÃƒÂ§Ã‚Â§Ã¢â‚¬â„¢
+        MAX_POLL_ATTEMPTS: 60             // Max polling attempts (~2 minutes)
     };
 
-    // 文件类型与图标映射
+    // comment
     var FILE_TYPE_ICONS = {
         'pdf': { icon: '&#xe9c6;', class: 'pdf' },
         'doc': { icon: '&#xe9ca;', class: 'doc' },
@@ -32,11 +32,16 @@ sap.ui.define([
         'default': { icon: '&#xe9c4;', class: 'default' }
     };
 
+    var CHAT_REQUEST_LIMITS = {
+        MAX_USER_MESSAGE_LENGTH: 120000,
+        MAX_PROMPT_LENGTH: 110000
+    };
+
     return Controller.extend("com.ai.assistant.aichatapp.controller.Main", {
 
         onInit: function () {
-            // 控制器初始化
-            // 布局已在视图中设置为TwoColumnsMidExpanded
+            // comment
+            // comment
             this._isExiting = false;
             this._pendingTimeouts = new Set();
             this._oActiveStreamController = null;
@@ -48,7 +53,7 @@ sap.ui.define([
             this._fnSidebarPointerDown = null;
             this._oSidebarDomRef = null;
 
-            // 监听路由匹配事件，获取AI类型参数
+            // comment
             var oRouter = this.getOwnerComponent().getRouter();
             this._oChatRoute = oRouter.getRoute("chat");
             this._oChatRoute.attachPatternMatched(this._onRouteMatched, this);
@@ -66,7 +71,7 @@ sap.ui.define([
 
 
         /**
-         * 视图渲染完成后调用
+          *
          */
         onAfterRendering: function () {
             this._bindKeyboardShortcut();
@@ -83,8 +88,8 @@ sap.ui.define([
         },
 
         /**
-         * 绑定键盘快捷键
-         * Enter 发送消息，Shift+Enter 换行
+          *
+          *
          */
         _bindKeyboardShortcut: function () {
             var oTextArea = this.byId("messageInput");
@@ -94,7 +99,7 @@ sap.ui.define([
                 var oTextAreaElement = oDomRef.querySelector("textarea");
 
                 if (oTextAreaElement) {
-                    // DOM 重新创建后，先解绑旧元素上的监听器再绑定新元素
+                    // comment
                     if (this._oBoundTextAreaElement && this._oBoundTextAreaElement !== oTextAreaElement && this._fnMessageInputKeydown) {
                         this._oBoundTextAreaElement.removeEventListener("keydown", this._fnMessageInputKeydown, true);
                         this._oBoundTextAreaElement = null;
@@ -107,13 +112,13 @@ sap.ui.define([
                     if (!this._fnMessageInputKeydown) {
                         var that = this;
                         this._fnMessageInputKeydown = function (oEvent) {
-                            // Enter 发送消息（不按 Shift）
+                            // comment
                             if (oEvent.key === "Enter" && !oEvent.shiftKey) {
                                 oEvent.preventDefault();
                                 oEvent.stopPropagation();
                                 that.onSendMessage();
                             }
-                            // Shift+Enter 换行（默认行为，不需要处理）
+                            // comment
                         };
                     }
 
@@ -124,8 +129,8 @@ sap.ui.define([
         },
 
         /**
-         * 路由匹配时触发，获取AI类型并更新页面
-         * @param {sap.ui.base.Event} oEvent 路由事件
+          *
+          *
          */
         _onRouteMatched: function (oEvent) {
             var sAiType = oEvent.getParameter("arguments").aiType;
@@ -138,59 +143,59 @@ sap.ui.define([
                 oModel.setProperty("/isLoading", false);
             }
 
-            // 初始化附件数组（如果尚未初始化）
+            // comment
             if (!oModel.getProperty("/attachments")) {
                 oModel.setProperty("/attachments", []);
             }
 
-            // 保存当前AI类型
+            // comment
             oModel.setProperty("/currentAiType", sAiType);
 
-            // 根据AI类型设置页面标题
+            // comment
             var sTitleKey = this._getAiTitleKey(sAiType);
             var sTitle = oI18n.getText(sTitleKey);
             oModel.setProperty("/currentAiTitle", sTitle);
 
-            // 更新页面标题
+            // comment
             this.byId("chatPageTitle").setText(sTitle);
 
-            // 更新欢迎信息（根据AI类型动态显示）
+            // comment
             this._updateWelcomeMessage(sAiType);
 
-            // 如果切换了AI类型，重置当前对话状态
+            // comment
             if (sPreviousAiType && sPreviousAiType !== sAiType) {
                 this._resetCurrentConversation();
             }
 
-            // 过滤显示当前AI类型的对话历史
+            // comment
             this._filterConversationsByAiType(sAiType);
         },
 
         /**
-         * 重置当前对话状态（切换AI类型时调用）
+          *
          */
         _resetCurrentConversation: function () {
             var oModel = this.getView().getModel("chat");
 
-            // 清空当前对话ID和消息
+            // comment
             oModel.setProperty("/currentConversationId", null);
             oModel.setProperty("/messages", []);
             this._setAttachmentsForConversation(null);
 
-            // 清空消息容器并显示欢迎框
+            // comment
             this._clearMessageContainer();
             this._showWelcomeBox();
         },
 
         /**
-         * 根据AI类型过滤对话历史
-         * @param {string} sAiType AI类型
+          *
+          *
          */
         _filterConversationsByAiType: function (sAiType) {
             var oModel = this.getView().getModel("chat");
             var aAllConversations = this.getOwnerComponent()._aAllConversations || [];
 
-            // 过滤出当前AI类型的对话
+            // comment
             var aFilteredConversations = aAllConversations.filter(function (conv) {
                 return conv.aiType === sAiType;
             });
@@ -199,8 +204,8 @@ sap.ui.define([
         },
 
         /**
-         * 根据AI类型更新欢迎信息
-         * @param {string} sAiType AI类型
+          *
+          *
          */
         _updateWelcomeMessage: function (sAiType) {
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
@@ -210,15 +215,15 @@ sap.ui.define([
                 return;
             }
 
-            // 获取对应AI类型的欢迎标题和消息
+            // comment
             var sWelcomeTitleKey = "welcomeTitle_" + sAiType;
             var sWelcomeMessageKey = "welcomeMessage_" + sAiType;
 
-            // 尝试获取特定AI类型的欢迎信息，如果没有则使用默认值
+            // comment
             var sWelcomeTitle = oI18n.getText(sWelcomeTitleKey);
             var sWelcomeMessage = oI18n.getText(sWelcomeMessageKey);
 
-            // 如果返回的是key本身（说明没有找到对应翻译），使用默认值
+            // comment
             if (sWelcomeTitle === sWelcomeTitleKey) {
                 sWelcomeTitle = oI18n.getText("welcomeTitle");
             }
@@ -226,7 +231,7 @@ sap.ui.define([
                 sWelcomeMessage = oI18n.getText("welcomeMessage");
             }
 
-            // 更新欢迎框中的标题和消息
+            // comment
             var aItems = oWelcomeBox.getItems();
             aItems.forEach(function (oItem) {
                 if (oItem.isA("sap.m.Title")) {
@@ -238,9 +243,9 @@ sap.ui.define([
         },
 
         /**
-         * 根据AI类型获取对应的i18n标题键
-         * @param {string} sAiType AI类型
-         * @returns {string} i18n键名
+          *
+          *
+          *
          */
         _getAiTitleKey: function (sAiType) {
             var oTitleMap = {
@@ -257,7 +262,7 @@ sap.ui.define([
         },
 
         /**
-         * 返回首页
+          *
          */
         onNavBack: function () {
             this._abortActiveStreamRequest();
@@ -265,16 +270,16 @@ sap.ui.define([
             oRouter.navTo("home");
         },
 
-        // 切换侧边栏显示/隐藏
+        // comment
         onToggleSidebar: function () {
             var oFlexibleColumnLayout = this.byId("flexibleColumnLayout");
             var sCurrentLayout = oFlexibleColumnLayout.getLayout();
 
             if (sCurrentLayout === "OneColumn" || sCurrentLayout === "MidColumnFullScreen") {
-                // 显示侧边栏，聊天区域更宽
+                // comment
                 oFlexibleColumnLayout.setLayout("TwoColumnsMidExpanded");
             } else {
-                // 隐藏侧边栏，全屏聊天
+                // comment
                 oFlexibleColumnLayout.setLayout("MidColumnFullScreen");
             }
 
@@ -330,7 +335,7 @@ sap.ui.define([
                         var oBeginColumn = document.getElementById(sBaseId + "-beginColumn");
                         if (oBeginColumn) {
                             var oRect = oBeginColumn.getBoundingClientRect();
-                            // 兼容不同主题下分隔条DOM差异：靠近列边界也视为用户要拖拽
+                            // comment
                             bHitSeparator = Math.abs(oEvent.clientX - oRect.right) <= 14;
                         }
                     }
@@ -398,7 +403,7 @@ sap.ui.define([
                 return;
             }
 
-            // 原默认约 33%，按需求缩到约三分之二 => 22%
+            // comment
             var nBeginWidth = 22;
             oBeginColumn.style.flex = "0 0 " + nBeginWidth + "%";
             oBeginColumn.style.maxWidth = nBeginWidth + "%";
@@ -408,7 +413,7 @@ sap.ui.define([
             oMidColumn.style.removeProperty("width");
         },
 
-        // 新建对话
+        // comment
         _ensureCurrentConversation: function (bSilent) {
             var oModel = this.getView().getModel("chat");
             var sCurrentId = oModel.getProperty("/currentConversationId");
@@ -438,24 +443,24 @@ sap.ui.define([
             var sCurrentAiType = oModel.getProperty("/currentAiType");
             var bSilent = vSilentFlag === true;
 
-            // 创建新对话（包含AI类型和会话信息）
+            // comment
             var oNewConversation = {
                 id: this._generateUUID(),
                 title: oI18n.getText("newConversation"),
                 messages: [],
                 lastUpdate: this._formatDate(new Date()),
                 sessionId: null,
-                sessionInfo: null,  // 新对话时为null，首次收到sessionId时初始化
+                sessionInfo: null,  // initialized after first session response
                 attachments: [],
-                aiType: sCurrentAiType  // 保存AI类型
+                aiType: sCurrentAiType  // Ã¤Â¿ÂÃ¯Â¿Â½Ã¯Â¿Â½AIÃ§Â±Â»Ã¯Â¿Â½~9
             };
 
-            // 添加到全局对话列表
+            // comment
             var aAllConversations = this.getOwnerComponent()._aAllConversations || [];
             aAllConversations.unshift(oNewConversation);
             this.getOwnerComponent()._aAllConversations = aAllConversations;
 
-            // 更新当前显示的对话列表（已过滤）
+            // comment
             var aFilteredConversations = oModel.getProperty("/conversations") || [];
             aFilteredConversations.unshift(oNewConversation);
             oModel.setProperty("/conversations", aFilteredConversations);
@@ -464,11 +469,11 @@ sap.ui.define([
             oModel.setProperty("/messages", []);
             this._setAttachmentsForConversation(oNewConversation);
 
-            // 清空消息容器并显示欢迎框
+            // comment
             this._clearMessageContainer();
             this._showWelcomeBox();
 
-            // 保存到localStorage
+            // comment
             this.getOwnerComponent().saveConversationsToStorage();
 
             if (!bSilent) {
@@ -477,17 +482,17 @@ sap.ui.define([
         },
 
 
-        // 选择对话
+        // comment
         onConversationSelect: function (oEvent) {
             var oContext;
             var oSource = oEvent.getSource();
 
-            // 处理不同的事件来源（List的selectionChange vs CustomListItem的press）
+            // comment
             if (oEvent.getParameter("listItem")) {
-                // 来自List的selectionChange事件
+                // comment
                 oContext = oEvent.getParameter("listItem").getBindingContext("chat");
             } else {
-                // 来自CustomListItem的press事件
+                // comment
                 oContext = oSource.getBindingContext("chat");
             }
 
@@ -495,7 +500,7 @@ sap.ui.define([
                 var oConversation = oContext.getObject();
                 var oModel = this.getView().getModel("chat");
 
-                // 从conversations数组中找到完整的对话数据（包含messages）
+                // comment
                 var aConversations = oModel.getProperty("/conversations") || [];
                 var oFullConversation = aConversations.find(function (conv) {
                     return conv.id === oConversation.id;
@@ -503,34 +508,34 @@ sap.ui.define([
 
                 if (oFullConversation) {
                     oModel.setProperty("/currentConversationId", oFullConversation.id);
-                    // 深拷贝消息数组避免引用问题
+                    // comment
                     var aMessages = JSON.parse(JSON.stringify(oFullConversation.messages || []));
                     oModel.setProperty("/messages", aMessages);
                     this._setAttachmentsForConversation(oFullConversation);
 
-                    // 渲染消息
+                    // comment
                     this._renderMessages();
 
-                    // 根据消息数量显示/隐藏欢迎框
+                    // comment
                     if (aMessages.length > 0) {
                         this._hideWelcomeBox();
                     } else {
                         this._showWelcomeBox();
                     }
 
-                    // 滚动到底部
+                    // comment
                     this._scrollToBottom();
                 }
             }
         },
 
-        // 编辑对话标题
+        // comment
         onEditConversationTitle: function (oEvent) {
             var that = this;
             var oSource = oEvent.getSource();
             var oContext = oSource.getBindingContext("chat");
 
-            // 防止重复点击
+            // comment
             if (this._bEditDialogOpen) {
                 return;
             }
@@ -541,18 +546,18 @@ sap.ui.define([
 
                 this._bEditDialogOpen = true;
 
-                // 使用sap.ui.require异步加载，避免全局依赖
+                // comment
                 var oI18n = this.getView().getModel("i18n").getResourceBundle();
 
                 sap.ui.require(["sap/m/Dialog", "sap/m/Input", "sap/m/Button"], function (Dialog, Input, Button) {
-                    // 创建输入控件
+                    // comment
                     var oInput = new Input({
                         value: oConversation.title,
                         width: "100%",
                         placeholder: oI18n.getText("editTitle")
                     });
 
-                    // 创建输入对话框
+                    // comment
                     var oDialog = new Dialog({
                         title: oI18n.getText("editTitle"),
                         type: "Message",
@@ -588,7 +593,7 @@ sap.ui.define([
             }
         },
 
-        // 删除对话
+        // comment
         onDeleteConversation: function (oEvent) {
             var that = this;
             var oSource = oEvent.getSource();
@@ -606,21 +611,21 @@ sap.ui.define([
                             var aConversations = oModel.getProperty("/conversations");
                             var sCurrentId = oModel.getProperty("/currentConversationId");
 
-                            // 过滤掉要删除的对话
+                            // comment
                             aConversations = aConversations.filter(function (conv) {
                                 return conv.id !== oConversation.id;
                             });
 
                             oModel.setProperty("/conversations", aConversations);
 
-                            // 同步删除全局对话列表中的对话
+                            // comment
                             var aAllConversations = that.getOwnerComponent()._aAllConversations || [];
                             aAllConversations = aAllConversations.filter(function (conv) {
                                 return conv.id !== oConversation.id;
                             });
                             that.getOwnerComponent()._aAllConversations = aAllConversations;
 
-                            // 如果删除的是当前对话，清空消息
+                            // comment
                             if (sCurrentId === oConversation.id) {
                                 oModel.setProperty("/currentConversationId", null);
                                 oModel.setProperty("/messages", []);
@@ -637,12 +642,12 @@ sap.ui.define([
             }
         },
 
-        // 发送消息
+        // comment
         onSendMessage: function () {
             var oModel = this.getView().getModel("chat");
             var oTextArea = this.byId("messageInput");
 
-            // 直接从TextArea获取值（确保获取最新输入）
+            // comment
             var sMessage = oTextArea ? oTextArea.getValue() : oModel.getProperty("/inputValue");
             var bIsLoading = oModel.getProperty("/isLoading");
 
@@ -655,18 +660,24 @@ sap.ui.define([
                 return;
             }
 
-            // 同步到model
-            oModel.setProperty("/inputValue", sMessage);
+            var sTrimmedMessage = sMessage.trim();
+            if (sTrimmedMessage.length > CHAT_REQUEST_LIMITS.MAX_USER_MESSAGE_LENGTH) {
+                MessageToast.show("æ¶ˆæ¯è¿‡é•¿ï¼Œè¯·ç²¾ç®€åŽé‡è¯•");
+                return;
+            }
 
-            // 确保有当前对话
-            var sCurrentId = this._ensureCurrentConversation(true);
+            // comment
+            oModel.setProperty("/inputValue", sTrimmedMessage);
+
+            // comment
+            this._ensureCurrentConversation(true);
             var oSendAttachmentPayload = this._extractReadyAttachmentsForSend();
 
-            // 添加用户消息
+            // comment
             var oUserMessage = {
                 id: this._generateUUID(),
                 role: "user",
-                content: sMessage.trim(),
+                content: sTrimmedMessage,
                 timestamp: new Date().toISOString(),
                 attachments: oSendAttachmentPayload.attachments,
                 attachmentContext: oSendAttachmentPayload.contextText || ""
@@ -676,22 +687,25 @@ sap.ui.define([
             aMessages.push(oUserMessage);
             oModel.setProperty("/messages", aMessages);
 
-            // 清空输入框（同时更新TextArea和model）
+            // comment
             oModel.setProperty("/inputValue", "");
             if (oTextArea) {
                 oTextArea.setValue("");
             }
 
-            // 隐藏欢迎信息
+            // comment
             this._hideWelcomeBox();
 
-            // 渲染用户消息
+            // comment
             this._renderUserMessage(oUserMessage);
 
-            // 设置加载状态
+            // comment
+            this._persistCurrentConversationState();
+
+            // comment
             oModel.setProperty("/isLoading", true);
 
-            // 创建AI消息占位
+            // comment
             var oAIMessage = {
                 id: this._generateUUID(),
                 role: "assistant",
@@ -701,14 +715,14 @@ sap.ui.define([
             aMessages.push(oAIMessage);
             oModel.setProperty("/messages", aMessages);
 
-            // 渲染AI消息容器
+            // comment
             this._renderAIMessageContainer(oAIMessage.id);
 
-            // 滚动到底部
+            // comment
             this._scrollToBottom();
 
-            // 调用AI接口（流式）
-            this._callAIStream(sMessage.trim(), oAIMessage.id, oUserMessage.attachmentContext);
+            // comment
+            this._callAIStream(sTrimmedMessage, oAIMessage.id, oUserMessage.attachmentContext);
         },
 
         _persistCurrentConversationState: function () {
@@ -772,17 +786,17 @@ sap.ui.define([
         },
 
 
-        // 调用AI流式接口
-        // session配置常量（与服务端保持一致）
+        // comment
+        // comment
         _SESSION_CONFIG: {
-            MAX_ROUNDS: 50,        // 百炼API限制：最多50轮
-            EXPIRE_HOURS: 1,       // 百炼API限制：1小时过期
-            FALLBACK_ROUNDS: 10    // 降级时使用的历史轮数
+            MAX_ROUNDS: 50,        // upstream limit
+            EXPIRE_HOURS: 1,       // upstream expiration in hours
+            FALLBACK_ROUNDS: 10    // Ã¯Â¿Â½"Ã¯Â¿Â½Ã§ÂºÂ§Ã¯Â¿Â½Ã¯Â¿Â½Ã¤Â½Â¿Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½aÃ¯Â¿Â½} Ã¥ÂÂ²Ã¨Â½Â®Ã¯Â¿Â½"Ã¯Â¿Â½
         },
 
         /**
-         * 调用AI流式接口（混合策略）
-         * 优先使用 session_id（云端存储），失效时降级到 messages（本地历史）
+          *
+          *
          */
         _callAIStream: function (sMessage, sMessageId, sAttachmentContext) {
             var that = this;
@@ -794,23 +808,43 @@ sap.ui.define([
                 return conv.id === sCurrentId;
             });
 
-            // 获取会话信息
+            if (oCurrentConv) {
+                delete oCurrentConv._sessionIdSaved;
+            }
+
+            // comment
             var sSessionId = oCurrentConv ? oCurrentConv.sessionId : null;
             var oSessionInfo = oCurrentConv ? oCurrentConv.sessionInfo : null;
 
-            // 获取当前消息列表
+            // comment
             var aCurrentMessages = oModel.getProperty("/messages") || [];
             var sAiType = oModel.getProperty("/currentAiType");
 
-            // 构建请求体（根据session状态决定使用哪种模式）
+            // comment
             var oRequestBody = this._buildRequestBody(sMessage, sSessionId, oSessionInfo, aCurrentMessages, sAiType, sAttachmentContext);
 
             var sFullContent = "";
+            var sStreamError = "";
             var nLastRenderAt = 0;
             var RENDER_THROTTLE_MS = 80;
             this._abortActiveStreamRequest();
             var oAbortController = new AbortController();
             this._oActiveStreamController = oAbortController;
+
+            var removeAssistantPlaceholder = function () {
+                var aLatestMessages = oModel.getProperty("/messages") || [];
+                aLatestMessages = aLatestMessages.filter(function (msg) {
+                    return msg.id !== sMessageId;
+                });
+                oModel.setProperty("/messages", aLatestMessages);
+
+                var oContainer = document.getElementById("ai-msg-" + sMessageId);
+                if (oContainer) {
+                    oContainer.remove();
+                }
+
+                that._persistCurrentConversationState();
+            };
 
             var finalizeRequest = function () {
                 if (that._oActiveStreamController !== oAbortController) {
@@ -822,7 +856,7 @@ sap.ui.define([
                 }
             };
 
-            // 使用fetch进行流式请求
+            // comment
             fetch("/api/chat/stream", {
                 method: "POST",
                 headers: {
@@ -832,7 +866,10 @@ sap.ui.define([
                 signal: oAbortController.signal
             }).then(function (response) {
                 if (!response.ok) {
-                    throw new Error(oI18n.getText("networkError"));
+                    return response.text().then(function (sRawError) {
+                        var sBackendError = that._extractBackendErrorMessage(sRawError, oI18n.getText("networkError"));
+                        throw new Error(sBackendError);
+                    });
                 }
 
                 if (!response.body) {
@@ -842,7 +879,10 @@ sap.ui.define([
                 return Utils.parseSSEStream(response, {
                     onData: function (oData) {
                         if (oData.error) {
-                            MessageToast.show(oData.error);
+                            if (!sStreamError) {
+                                sStreamError = oData.error;
+                                MessageToast.show(sStreamError);
+                            }
                             return;
                         }
 
@@ -872,12 +912,19 @@ sap.ui.define([
                             finalizeRequest();
                             return;
                         }
+
+                        if (sStreamError && !sFullContent) {
+                            removeAssistantPlaceholder();
+                            finalizeRequest();
+                            return;
+                        }
+
                         that._updateAIMessageContent(sMessageId, sFullContent, true);
                         that._finalizeAIMessage(sMessageId, sFullContent);
                         finalizeRequest();
                     },
                     onError: function (streamError) {
-                        console.error("流读取错误:", streamError);
+                        console.error("æµè¯»å–é”™è¯¯:", streamError);
                         if (that._isExiting) {
                             finalizeRequest();
                             return;
@@ -885,6 +932,8 @@ sap.ui.define([
                         if (sFullContent) {
                             that._updateAIMessageContent(sMessageId, sFullContent, true);
                             that._finalizeAIMessage(sMessageId, sFullContent);
+                        } else {
+                            removeAssistantPlaceholder();
                         }
                         finalizeRequest();
                         MessageToast.show(oI18n.getText("connectionInterrupted"));
@@ -895,37 +944,27 @@ sap.ui.define([
                     finalizeRequest();
                     return;
                 }
-                console.error("AI调用错误:", error);
+                console.error("AIè°ƒç”¨é”™è¯¯:", error);
                 if (!that._isExiting) {
-                    MessageToast.show(oI18n.getText("aiServiceUnavailable"));
+                    MessageToast.show((error && error.message) ? error.message : oI18n.getText("aiServiceUnavailable"));
                 }
                 finalizeRequest();
 
-                // 移除失败的AI消息
+                // comment
                 if (that._isExiting) {
                     return;
                 }
-                var aMessages = oModel.getProperty("/messages") || [];
-                aMessages = aMessages.filter(function (msg) {
-                    return msg.id !== sMessageId;
-                });
-                oModel.setProperty("/messages", aMessages);
-
-                // 移除DOM中的消息容器
-                var oContainer = document.getElementById("ai-msg-" + sMessageId);
-                if (oContainer) {
-                    oContainer.remove();
-                }
+                removeAssistantPlaceholder();
             });
         },
 
-        // 渲染用户消息（头像在右边）
+        // comment
         _renderUserMessage: function (oMessage) {
             var that = this;
             var oMessageList = this.byId("messageList");
             var oDomRef = oMessageList.getDomRef();
 
-            // 如果DOM未准备好，延迟重试
+            // comment
             if (!oDomRef) {
                 this._setManagedTimeout(function () {
                     that._renderUserMessage(oMessage);
@@ -933,7 +972,7 @@ sap.ui.define([
                 return;
             }
 
-            // 用户消息：内容在左，头像在右（通过flex-direction: row-reverse实现）
+            // comment
             var sAttachmentStripHtml = this._buildMessageAttachmentStripHtml(oMessage.attachments);
             var sHtml = '<div class="messageItem userMessage" id="user-msg-' + oMessage.id + '">' +
                 '<div class="avatarContainer">' +
@@ -961,7 +1000,7 @@ sap.ui.define([
                 var sMeta = "";
 
                 if (sSize && sExt) {
-                    sMeta = sSize + " · " + sExt;
+                    sMeta = sSize + " Ãƒâ€šÃ‚Â· " + sExt;
                 } else if (sSize) {
                     sMeta = sSize;
                 } else if (sExt) {
@@ -978,13 +1017,13 @@ sap.ui.define([
             return '<div class="messageAttachmentStrip">' + aChips.join("") + '</div>';
         },
 
-        // 渲染AI消息容器（用于流式输出）
+        // comment
         _renderAIMessageContainer: function (sMessageId) {
             var that = this;
             var oMessageList = this.byId("messageList");
             var oDomRef = oMessageList.getDomRef();
 
-            // 如果DOM未准备好，延迟重试
+            // comment
             if (!oDomRef) {
                 this._setManagedTimeout(function () {
                     that._renderAIMessageContainer(sMessageId);
@@ -1006,7 +1045,7 @@ sap.ui.define([
 
             oDomRef.insertAdjacentHTML("beforeend", sHtml);
 
-            // 附加整体消息复制按钮
+            // Add a copy button area for assistant messages
             var oActionArea = document.getElementById("ai-actions-" + sMessageId);
             if (oActionArea) {
                 var oI18n = this.getView().getModel("i18n").getResourceBundle();
@@ -1048,7 +1087,7 @@ sap.ui.define([
             }
         },
 
-        // 更新AI消息内容（流式）
+        // comment
         _updateAIMessageContent: function (sMessageId, sContent, bFinalize) {
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
@@ -1062,28 +1101,28 @@ sap.ui.define([
             var oTextElement = document.getElementById("ai-text-" + sMessageId);
 
             if (oTextElement) {
-                // 使用marked渲染Markdown
+                // comment
                 var sRenderedContent = this._renderMarkdown(sContent);
                 oTextElement.innerHTML = sRenderedContent;
 
                 if (bFinalize !== false) {
-                    // 高亮代码块
+                    // comment
                     this._highlightCode(oTextElement);
 
-                    // 添加复制按钮
+                    // comment
                     this._addCopyButtons(oTextElement);
                 }
             }
         },
 
 
-        // 完成AI消息
+        // comment
         _finalizeAIMessage: function (sMessageId, sContent) {
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
             var sCurrentId = oModel.getProperty("/currentConversationId");
 
-            // 更新消息内容
+            // comment
             var oMessage = aMessages.find(function (msg) {
                 return msg.id === sMessageId;
             });
@@ -1092,36 +1131,36 @@ sap.ui.define([
                 oMessage.content = sContent;
             }
 
-            // 更新对话 - 深拷贝消息数组确保数据独立
+            // comment
             var aConversations = oModel.getProperty("/conversations") || [];
             var iConvIndex = aConversations.findIndex(function (conv) {
                 return conv.id === sCurrentId;
             });
 
             if (iConvIndex >= 0) {
-                // 深拷贝消息数组到对话中
+                // comment
                 aConversations[iConvIndex].messages = JSON.parse(JSON.stringify(aMessages));
                 aConversations[iConvIndex].lastUpdate = this._formatDate(new Date());
 
-                // 更新 sessionInfo（每轮对话完成时更新一次）
+                // comment
                 if (aConversations[iConvIndex].sessionId) {
                     if (!aConversations[iConvIndex].sessionInfo) {
-                        // 首次初始化
+                        // comment
                         aConversations[iConvIndex].sessionInfo = {
                             createdAt: new Date().toISOString(),
                             roundCount: 1
                         };
                     } else {
-                        // 累加轮次
+                        // comment
                         aConversations[iConvIndex].sessionInfo.roundCount++;
                     }
-                    console.log("[AI] 当前轮次: " + aConversations[iConvIndex].sessionInfo.roundCount);
+                    console.log("[AI] å½“å‰è½®æ¬¡: " + aConversations[iConvIndex].sessionInfo.roundCount);
                 }
 
-                // 重置 _sessionIdSaved 标记，为下一轮做准备
+                // comment
                 delete aConversations[iConvIndex]._sessionIdSaved;
 
-                // 如果是第一条消息，用内容作为标题
+                // comment
                 var oI18n = this.getView().getModel("i18n").getResourceBundle();
                 var sNewConvTitle = oI18n.getText("newConversation");
                 if (aMessages.length <= 2 && aConversations[iConvIndex].title === sNewConvTitle) {
@@ -1130,25 +1169,25 @@ sap.ui.define([
                 }
             }
 
-            // 显式设置回模型触发更新
+            // comment
             oModel.setProperty("/conversations", aConversations);
             oModel.setProperty("/messages", aMessages);
 
-            // 同步更新到全局对话列表
+            // comment
             this._syncToAllConversations(aConversations);
 
-            // 保存到localStorage
+            // comment
             this.getOwnerComponent().saveConversationsToStorage();
         },
 
         /**
-         * 同步当前显示的对话到全局对话列表
-         * @param {Array} aFilteredConversations 当前显示的对话列表
+          *
+          *
          */
         _syncToAllConversations: function (aFilteredConversations) {
             var aAllConversations = this.getOwnerComponent()._aAllConversations || [];
 
-            // 更新全局列表中对应的对话
+            // comment
             aFilteredConversations.forEach(function (oConv) {
                 var iIndex = aAllConversations.findIndex(function (c) {
                     return c.id === oConv.id;
@@ -1161,10 +1200,10 @@ sap.ui.define([
             this.getOwnerComponent()._aAllConversations = aAllConversations;
         },
 
-        // 渲染Markdown
+        // comment
         _renderMarkdown: function (sContent) {
             if (typeof marked !== "undefined") {
-                // 配置marked
+                // comment
                 marked.setOptions({
                     breaks: true,
                     gfm: true
@@ -1175,7 +1214,7 @@ sap.ui.define([
             return Utils.escapeHtml(sContent);
         },
 
-        // 高亮代码
+        // comment
         _highlightCode: function (oElement) {
             if (typeof hljs !== "undefined") {
                 var aCodeBlocks = oElement.querySelectorAll("pre code");
@@ -1186,7 +1225,7 @@ sap.ui.define([
         },
 
 
-        // 添加复制按钮到代码块
+        // comment
         _addCopyButtons: function (oElement) {
             var that = this;
             var aPreBlocks = oElement.querySelectorAll("pre");
@@ -1196,20 +1235,20 @@ sap.ui.define([
             var sCopyFailedText = oI18n.getText("copyFailed");
 
             aPreBlocks.forEach(function (pre) {
-                // 避免重复包装同一个代码块
+                // comment
                 if (pre.parentNode && pre.parentNode.classList && pre.parentNode.classList.contains("codeBlockWrapper")) {
                     return;
                 }
 
-                // 创建复制按钮
+                // comment
                 var oCopyBtn = document.createElement("button");
                 oCopyBtn.className = "copyButton";
-                // SAP-icons: &#xe0ec; = copy (复制图标)
+                // comment
                 oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
                 oCopyBtn.onclick = function () {
                     var sCode = pre.querySelector("code") ? pre.querySelector("code").textContent : pre.textContent;
                     Utils.copyTextToClipboard(sCode).then(function () {
-                        // SAP-icons: &#xe05b; = accept (勾选图标，表示复制成功)
+                        // comment
                         oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe05b;</span> ' + sCopiedText;
                         that._setManagedTimeout(function () {
                             oCopyBtn.innerHTML = '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe0ec;</span> ' + sCopyText;
@@ -1219,7 +1258,7 @@ sap.ui.define([
                     });
                 };
 
-                // 包装pre元素
+                // comment
                 var oWrapper = document.createElement("div");
                 oWrapper.className = "codeBlockWrapper";
                 pre.parentNode.insertBefore(oWrapper, pre);
@@ -1228,16 +1267,16 @@ sap.ui.define([
             });
         },
 
-        // 渲染所有消息（切换对话时使用）
+        // comment
         _renderMessages: function () {
             var that = this;
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
 
-            // 清空消息容器
+            // comment
             this._clearMessageContainer();
 
-            // 渲染每条消息
+            // comment
             aMessages.forEach(function (oMessage) {
                 if (oMessage.role === "user") {
                     that._renderUserMessage(oMessage);
@@ -1250,7 +1289,7 @@ sap.ui.define([
             });
         },
 
-        // 清空消息容器
+        // comment
         _clearMessageContainer: function () {
             var oMessageList = this.byId("messageList");
             var oDomRef = oMessageList.getDomRef();
@@ -1260,7 +1299,7 @@ sap.ui.define([
             }
         },
 
-        // 滚动到底部
+        // comment
         _scrollToBottom: function () {
             var oScrollContainer = this.byId("messageScrollContainer");
 
@@ -1275,30 +1314,29 @@ sap.ui.define([
         },
 
         /**
-         * 构建API请求体（混合策略核心逻辑）
-         * 优先使用 session_id，失效时降级到 messages
-         * @param {string} sMessage 当前消息
-         * @param {string} sSessionId 会话ID
-         * @param {object} oSessionInfo 会话信息
-         * @param {Array} aMessages 消息数组
-         * @param {string} sAiType AI类型
-         * @returns {object} 请求体
+          *
+          *
+          *
+          *
+          *
+          *
+          *
+          *
          */
         _buildRequestBody: function (sMessage, sSessionId, oSessionInfo, aMessages, sAiType, sAttachmentContext) {
             var bUseSessionId = this._shouldUseSessionId(sSessionId, oSessionInfo);
 
-            // 获取已就绪的本地文件提取的纯文本内容
+            // comment
             var sContextText = sAttachmentContext || this._getReadySessionParsedTexts();
-            var sFinalMessage = sMessage;
+            var sFinalMessage = this._buildPromptWithContext(sMessage, sContextText);
 
             if (sContextText) {
-                sFinalMessage = "基于以下参考资料：\n\n" + sContextText + "\n\n--- 资料结束 ---\n\n用户问题：\n" + sMessage;
-                console.log("[AI] 附加了前端解析的本地上下文文本，长度: " + sContextText.length);
+                console.log("[AI] é™„åŠ äº†å‰ç«¯è§£æžä¸Šä¸‹æ–‡ï¼ŒåŽŸå§‹é•¿åº¦: " + sContextText.length + "ï¼Œæœ€ç»ˆPrompté•¿åº¦: " + sFinalMessage.length);
             }
 
             if (bUseSessionId) {
-                // 方案1：使用 session_id（云端存储，省token）
-                console.log("[AI] 使用 session_id 模式");
+                // comment
+                console.log("[AI] ä½¿ç”¨ session_id æ¨¡å¼");
                 return {
                     message: sFinalMessage,
                     sessionId: sSessionId,
@@ -1306,8 +1344,8 @@ sap.ui.define([
                     aiType: sAiType
                 };
             } else if (aMessages && aMessages.length > 2) {
-                // 方案2：使用 messages 数组（本地历史，降级方案）
-                console.log("[AI] 使用 messages 模式（降级）");
+                // comment
+                console.log("[AI] ä½¿ç”¨ messages æ¨¡å¼ï¼ˆé™çº§ï¼‰");
                 var aHistoryMessages = this._buildMessagesArray(aMessages);
                 return {
                     message: sFinalMessage,
@@ -1316,8 +1354,8 @@ sap.ui.define([
                     aiType: sAiType
                 };
             } else {
-                // 方案3：新对话
-                console.log("[AI] 新对话模式");
+                // comment
+                console.log("[AI] æ–°å¯¹è¯æ¨¡å¼");
                 return {
                     message: sFinalMessage,
                     aiType: sAiType
@@ -1326,35 +1364,80 @@ sap.ui.define([
         },
 
         /**
-         * 判断是否应该使用 session_id
-         * @param {string} sSessionId 会话ID
-         * @param {object} oSessionInfo 会话信息
-         * @returns {boolean} 是否使用 session_id
+          *
+          *
+          *
+          *
          */
+        _buildPromptWithContext: function (sMessage, sContextText) {
+            var sSafeMessage = typeof sMessage === "string" ? sMessage : "";
+            var sSafeContext = typeof sContextText === "string" ? sContextText : "";
+            var nPromptLimit = CHAT_REQUEST_LIMITS.MAX_PROMPT_LENGTH;
+
+            if (!sSafeContext) {
+                return sSafeMessage.slice(0, nPromptLimit);
+            }
+
+            var sPrefix = "åŸºäºŽä»¥ä¸‹å‚è€ƒèµ„æ–™ï¼š\n\n";
+            var sMiddle = "\n\n--- èµ„æ–™ç»“æŸ ---\n\nç”¨æˆ·é—®é¢˜ï¼š\n";
+            var nAvailableContext = nPromptLimit - sPrefix.length - sMiddle.length - sSafeMessage.length;
+
+            if (nAvailableContext <= 0) {
+                return sSafeMessage.slice(0, nPromptLimit);
+            }
+
+            var sTrimmedContext = sSafeContext.length > nAvailableContext ? sSafeContext.slice(0, nAvailableContext) : sSafeContext;
+            return sPrefix + sTrimmedContext + sMiddle + sSafeMessage;
+        },
+
+        _extractBackendErrorMessage: function (sRawError, sFallback) {
+            var sDefaultText = sFallback || "è¯·æ±‚å¤±è´¥ï¼Œè¯·ç¨åŽé‡è¯•";
+            if (!sRawError) {
+                return sDefaultText;
+            }
+
+            var sRawText = String(sRawError).trim();
+            if (!sRawText) {
+                return sDefaultText;
+            }
+
+            try {
+                var oPayload = JSON.parse(sRawText);
+                var sPayloadError = oPayload && typeof oPayload.error === "string" ? oPayload.error.trim() : "";
+                if (sPayloadError) {
+                    return sPayloadError;
+                }
+            } catch {
+                // ignore parse error and fallback to plain text
+            }
+
+            return sRawText;
+        },
+
         _shouldUseSessionId: function (sSessionId, oSessionInfo) {
             if (!sSessionId) {
                 return false;
             }
 
             if (!oSessionInfo) {
-                // 有 sessionId 但没有 sessionInfo，可能是旧数据，尝试使用
+                // comment
                 return true;
             }
 
-            // 检查轮次限制
+            // comment
             if (oSessionInfo.roundCount >= this._SESSION_CONFIG.MAX_ROUNDS) {
-                console.log("[AI] session_id 已达轮次上限，切换到 messages 模式");
+                console.log("[AI] session_id å·²è¾¾è½®æ¬¡ä¸Šé™ï¼Œåˆ‡æ¢åˆ° messages æ¨¡å¼");
                 return false;
             }
 
-            // 检查时间限制
+            // comment
             if (oSessionInfo.createdAt) {
                 var nCreatedTime = new Date(oSessionInfo.createdAt).getTime();
                 var nNow = Date.now();
                 var nExpireTime = this._SESSION_CONFIG.EXPIRE_HOURS * 60 * 60 * 1000;
 
                 if (nNow - nCreatedTime > nExpireTime) {
-                    console.log("[AI] session_id 已过期，切换到 messages 模式");
+                    console.log("[AI] session_id å·²è¿‡æœŸï¼Œåˆ‡æ¢åˆ° messages æ¨¡å¼");
                     return false;
                 }
             }
@@ -1363,31 +1446,32 @@ sap.ui.define([
         },
 
         /**
-         * 构建 messages 数组（用于降级方案）
-         * 格式符合百炼API要求：[{role: "user", content: "..."}, {role: "assistant", content: "..."}]
-         * @param {Array} aMessages 消息数组
-         * @returns {Array} 格式化的 messages 数组
+          *
+          *
+          *
+          *
          */
         _buildMessagesArray: function (aMessages) {
-            // 排除最后两条（当前用户消息和AI占位消息）
+            // comment
             var aHistory = aMessages.slice(0, -2);
+            var that = this;
 
-            // 只取最近N轮，避免token超限
+            // comment
             var nMaxRounds = this._SESSION_CONFIG.FALLBACK_ROUNDS;
-            var nMaxMessages = nMaxRounds * 2;  // 每轮包含用户和AI各一条
+            var nMaxMessages = nMaxRounds * 2;  // Ã¦Â¯ÂÃ¨Â½Â®Ã¯Â¿Â½R&Ã¥ÂÂ«Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½Ã†Â·Ã¯Â¿Â½RAIÃ¯Â¿Â½Ã¤Â¸Â¬Ã¦ÂÂ¡
             if (aHistory.length > nMaxMessages) {
                 aHistory = aHistory.slice(-nMaxMessages);
             }
 
-            // 转换为百炼API格式
+            // comment
             return aHistory.filter(function (msg) {
-                return msg.content;  // 过滤空内容
+                return msg.content;  // Ã¯Â¿Â½!Ã¦Â»Â¤Ã§Â©ÂºÃ¯Â¿Â½ &Ã¥Â®Â¹
             }).map(function (msg) {
                 var sContent = msg.content;
                 if (msg.role === "user" && msg.attachmentContext) {
-                    sContent = "基于以下参考资料：\n\n" + msg.attachmentContext + "\n\n--- 资料结束 ---\n\n用户问题：\n" + sContent;
+                    sContent = that._buildPromptWithContext(sContent, msg.attachmentContext);
                 }
-                // AI回复截断，避免token过长
+                // comment
                 if (msg.role === "assistant" && sContent.length > 1000) {
                     sContent = sContent.substring(0, 1000) + "...";
                 }
@@ -1398,7 +1482,7 @@ sap.ui.define([
             });
         },
 
-        // 生成UUID
+        // comment
         _generateUUID: function () {
             return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
                 var r = Math.random() * 16 | 0;
@@ -1407,7 +1491,7 @@ sap.ui.define([
             });
         },
 
-        // 格式化日期
+        // comment
         _formatDate: function (oDate) {
             var sYear = oDate.getFullYear();
             var sMonth = String(oDate.getMonth() + 1).padStart(2, "0");
@@ -1453,7 +1537,7 @@ sap.ui.define([
             }
         },
 
-        // 隐藏欢迎框
+        // comment
         _hideWelcomeBox: function () {
             var oWelcomeBox = this.byId("welcomeBox");
             if (oWelcomeBox) {
@@ -1461,7 +1545,7 @@ sap.ui.define([
             }
         },
 
-        // 显示欢迎框
+        // comment
         _showWelcomeBox: function () {
             var oWelcomeBox = this.byId("welcomeBox");
             if (oWelcomeBox) {
@@ -1522,15 +1606,15 @@ sap.ui.define([
         },
 
 
-        // ==================== 文件上传相关函数 ====================
+        // comment
 
         /**
-         * 绑定隐藏的文件输入框的change事件
+          *
          */
         _bindFileInputChange: function () {
             var that = this;
 
-            // 延迟等待DOM渲染完成
+            // comment
             this._setManagedTimeout(function () {
                 var oFileInput = document.getElementById("hiddenFileInput");
                 if (!oFileInput) {
@@ -1556,31 +1640,30 @@ sap.ui.define([
         },
 
         /**
-         * 点击上传按钮，触发隐藏的文件输入
+         * Click upload button and trigger the native file input
          */
         onUploadFile: function () {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
 
-            // 检查附件数量限制
+            // comment
             if (aAttachments.length >= FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION) {
-                MessageToast.show(oI18n.getText("maxFilesReached") || "最多只能上传 " + FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION + " 个文件");
+                MessageToast.show(oI18n.getText("maxFilesReached") || "æœ€å¤šåªå…è®¸ä¸Šä¼  " + FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION + " ä¸ªæ–‡ä»¶");
                 return;
             }
 
             var oFileInput = document.getElementById("hiddenFileInput");
             if (oFileInput) {
-                oFileInput.value = "";  // 清空以允许重复选择同一文件
+                oFileInput.value = "";  // Ã¯Â¿Â½&Ã§Â©ÂºÃ¤Â»Â¥Ã¯Â¿Â½&Ã¯Â¿Â½Ã¨Â®Â¸Ã¯Â¿Â½!Ã¯Â¿Â½Ã¥Â¤ÂÃ¯Â¿Â½0Ã¯Â¿Â½9Ã¯Â¿Â½Ã¯Â¿Â½RÃ¤Â¸Â¬Ã¯Â¿Â½!Ã¤Â»Â¶
                 oFileInput.click();
             }
         },
 
         /**
-         * 处理文件选择
+          *
          */
         _handleFileSelect: function (oEvent) {
-            var that = this;
             var oFile = oEvent.target.files[0];
             var oModel = this.getView().getModel("chat");
             var oI18n = this.getView().getModel("i18n").getResourceBundle();
@@ -1592,25 +1675,27 @@ sap.ui.define([
             // Ensure a conversation exists so attachments are retained for first message.
             this._ensureCurrentConversation(true);
 
-            // 验证文件大小
+            // comment
             if (oFile.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
                 MessageBox.error(
-                    (oI18n.getText("fileTooLarge") || "文件过大") +
-                    "，最大支持 " + this._formatFileSize(FILE_UPLOAD_CONFIG.MAX_FILE_SIZE)
+                    (oI18n.getText("fileTooLarge") || "æ–‡ä»¶è¿‡å¤§") +
+                    "ï¼Œæœ€å¤§å…è®¸ä¸º " + this._formatFileSize(FILE_UPLOAD_CONFIG.MAX_FILE_SIZE)
                 );
                 return;
             }
 
-            // 验证文件类型
-            var sExt = '.' + oFile.name.split('.').pop().toLowerCase();
-            if (!FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(sExt)) {
+            // comment
+            var sFileName = oFile.name || "";
+            var nLastDot = sFileName.lastIndexOf(".");
+            var sExt = nLastDot >= 0 ? sFileName.substring(nLastDot).toLowerCase() : "";
+            if (!sExt || !FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(sExt)) {
                 MessageBox.error(
-                    (oI18n.getText("unsupportedFileType") || "不支持的文件类型") + ": " + sExt
+                    (oI18n.getText("unsupportedFileType") || "ä¸æ”¯æŒçš„æ–‡ä»¶ç±»åž‹") + ": " + (sExt || sFileName || "unknown")
                 );
                 return;
             }
 
-            // 创建附件对象
+            // comment
             var oAttachment = {
                 id: this._generateUUID(),
                 file: oFile,
@@ -1620,27 +1705,27 @@ sap.ui.define([
                 status: 'uploading',
                 progress: 0,
                 fileId: null,
-                message: oI18n.getText("uploading") || "上传中..."
+                message: oI18n.getText("uploading") || "ä¸Šä¼ ä¸­..."
             };
 
-            // 添加到附件列表
+            // comment
             var aAttachments = oModel.getProperty("/attachments") || [];
             aAttachments.push(oAttachment);
             oModel.setProperty("/attachments", aAttachments);
             this._updateCurrentConversationAttachments(aAttachments);
 
-            // 渲染附件卡片
+            // comment
             this._renderAttachmentCard(oAttachment);
 
-            // 更新附件区域可见性
+            // comment
             this._updateAttachmentAreaVisibility();
 
-            // 开始上传
+            // comment
             this._uploadFile(oAttachment);
         },
 
         /**
-         * 动态加载外部 CDN 脚本
+          *
          */
         _loadScript: function (sUrl, sGlobalVar) {
             return new Promise(function (resolve, reject) {
@@ -1651,13 +1736,13 @@ sap.ui.define([
                 var script = document.createElement('script');
                 script.src = sUrl;
                 script.onload = function () { resolve(window[sGlobalVar]); };
-                script.onerror = function () { reject(new Error("加载脚本失败: " + sUrl)); };
+                script.onerror = function () { reject(new Error("åŠ è½½è„šæœ¬å¤±è´¥: " + sUrl)); };
                 document.head.appendChild(script);
             });
         },
 
         /**
-         * 上传文件改为本地前端纯文本解析
+         * Upload flow uses local frontend parsing instead of backend parsing
          */
         _uploadFile: function (oAttachment) {
             var that = this;
@@ -1666,7 +1751,7 @@ sap.ui.define([
             that._updateAttachmentCard(oAttachment.id, {
                 status: 'processing',
                 progress: 50,
-                message: oI18n.getText("parsing") || "解析中..."
+                message: oI18n.getText("parsing") || "è§£æžä¸­..."
             });
             that._updateAttachmentInModel(oAttachment.id, {
                 status: 'processing'
@@ -1677,31 +1762,31 @@ sap.ui.define([
                     that._updateAttachmentCard(oAttachment.id, {
                         status: 'ready',
                         progress: 100,
-                        message: oI18n.getText("ready") || "已就绪"
+                        message: oI18n.getText("ready") || "å·²å°±ç»ª"
                     });
                     that._updateAttachmentInModel(oAttachment.id, {
                         status: 'ready',
                         parsedText: sParsedText
                     });
-                    MessageToast.show(oAttachment.fileName + " " + (oI18n.getText("parseComplete") || "解析完成"));
+                    MessageToast.show(oAttachment.fileName + " " + (oI18n.getText("parseComplete") || "è§£æžå®Œæˆ"));
                 })
                 .catch(function (error) {
-                    console.error("[FileParse] 前端解析错误:", error);
+                    console.error("[FileParse] å‰ç«¯è§£æžé”™è¯¯:", error);
                     that._updateAttachmentCard(oAttachment.id, {
                         status: 'error',
                         progress: 0,
-                        message: error.message || "解析失败"
+                        message: error.message || "è§£æžå¤±è´¥"
                     });
                     that._updateAttachmentInModel(oAttachment.id, {
                         status: 'error',
                         message: error.message
                     });
-                    MessageToast.show(error.message || "文件解析失败");
+                    MessageToast.show(error.message || "æ–‡ä»¶è§£æžå¤±è´¥");
                 });
         },
 
         /**
-         * 纯前端本地解析：支持 txt, md, json, csv, xml, pdf, docx, xlsx, xls
+          *
          */
         _parseFileLocally: function (oFile, sExt) {
             var that = this;
@@ -1771,13 +1856,13 @@ sap.ui.define([
                             reader.readAsArrayBuffer(oFile);
                         }).catch(reject);
                 } else {
-                    reject(new Error("不支持在浏览器中直接解析此类型的文件: " + sExt));
+                    reject(new Error("ä¸æ”¯æŒåœ¨æµè§ˆå™¨ä¸­ç›´æŽ¥è§£æžæ­¤ç±»åž‹çš„æ–‡ä»¶: " + sExt));
                 }
             });
         },
 
         /**
-         * 渲染附件卡片
+          *
          */
         _renderAttachmentCard: function (oAttachment) {
             var that = this;
@@ -1814,14 +1899,14 @@ sap.ui.define([
                 '<div class="progressBar ' + sProgressClass + '" id="file-progress-' + oAttachment.id + '" style="width: ' + oAttachment.progress + '%"></div>' +
                 '</div>' +
                 '</div>' +
-                '<button class="fileDeleteBtn" id="file-delete-' + oAttachment.id + '" title="删除">' +
+                '<button class="fileDeleteBtn" id="file-delete-' + oAttachment.id + '" title="ÃƒÂ¥Ã‹â€  ÃƒÂ©Ã¢â€žÂ¢Ã‚Â¤">' +
                 '<span class="sapUiIcon deleteIcon" style="font-family: SAP-icons">&#xe03e;</span>' +
                 '</button>' +
                 '</div>';
 
             oDomRef.insertAdjacentHTML("beforeend", sHtml);
 
-            // 绑定删除按钮事件
+            // comment
             var oDeleteBtn = document.getElementById("file-delete-" + oAttachment.id);
             if (oDeleteBtn) {
                 oDeleteBtn.addEventListener("click", function () {
@@ -1831,7 +1916,7 @@ sap.ui.define([
         },
 
         /**
-         * 更新附件卡片状态
+          *
          */
         _updateAttachmentCard: function (sAttachmentId, oUpdates) {
             var oStatusEl = document.getElementById("file-status-" + sAttachmentId);
@@ -1865,7 +1950,7 @@ sap.ui.define([
         },
 
         /**
-         * 更新模型中的附件数据
+          *
          */
         _updateAttachmentInModel: function (sAttachmentId, oUpdates) {
             var oModel = this.getView().getModel("chat");
@@ -1883,31 +1968,31 @@ sap.ui.define([
         },
 
         /**
-         * 删除附件
+          *
          */
         _removeAttachment: function (sAttachmentId) {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
 
-            // 从模型中移除
+            // comment
             aAttachments = aAttachments.filter(function (a) {
                 return a.id !== sAttachmentId;
             });
             oModel.setProperty("/attachments", aAttachments);
             this._updateCurrentConversationAttachments(aAttachments);
 
-            // 从DOM中移除
+            // comment
             var oCardEl = document.getElementById("file-card-" + sAttachmentId);
             if (oCardEl) {
                 oCardEl.remove();
             }
 
-            // 更新附件区域可见性
+            // comment
             this._updateAttachmentAreaVisibility();
         },
 
         /**
-         * 更新附件区域可见性
+          *
          */
         _updateAttachmentAreaVisibility: function () {
             var oModel = this.getView().getModel("chat");
@@ -1920,7 +2005,7 @@ sap.ui.define([
         },
 
         /**
-         * 获取文件类型对应的图标信息
+          *
          */
         _getFileTypeIcon: function (sExt) {
             var sLowerExt = (sExt || '').toLowerCase();
@@ -1928,7 +2013,7 @@ sap.ui.define([
         },
 
         /**
-         * 格式化文件大小
+          *
          */
         _formatFileSize: function (nBytes) {
             if (nBytes < 1024) {
@@ -1957,7 +2042,7 @@ sap.ui.define([
                     });
 
                     if (oAttachment.parsedText) {
-                        aContextBlocks.push("【文件：" + oAttachment.fileName + "】\n" + oAttachment.parsedText);
+                        aContextBlocks.push("ã€æ–‡ä»¶ï¼š" + oAttachment.fileName + "ã€‘\n" + oAttachment.parsedText);
                     }
                 } else {
                     aRemainingAttachments.push(oAttachment);
@@ -1978,7 +2063,7 @@ sap.ui.define([
         },
 
         /**
-         * 获取已就绪的本地会话文件所有的解析文本
+          *
          */
         _getReadySessionParsedTexts: function () {
             var oModel = this.getView().getModel("chat");
@@ -1987,21 +2072,21 @@ sap.ui.define([
 
             aAttachments.forEach(function (a) {
                 if (a.status === 'ready' && a.parsedText) {
-                    sContext += "【文件：" + a.fileName + "】\n" + a.parsedText + "\n\n";
+                    sContext += "ã€æ–‡ä»¶ï¼š" + a.fileName + "ã€‘\n" + a.parsedText + "\n\n";
                 }
             });
             return sContext.trim();
         },
 
         /**
-         * 清空当前会话的所有附件
+          *
          */
         _clearAttachments: function () {
             var oModel = this.getView().getModel("chat");
             oModel.setProperty("/attachments", []);
             this._updateCurrentConversationAttachments([]);
 
-            // 清空DOM
+            // comment
             this._clearAttachmentDom();
             this._updateAttachmentAreaVisibility();
         },
@@ -2044,3 +2129,8 @@ sap.ui.define([
         }
     });
 });
+
+
+
+
+

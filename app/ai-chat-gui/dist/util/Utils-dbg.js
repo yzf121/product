@@ -86,7 +86,7 @@ sap.ui.define([], function () {
                     if (oCallbacks.onData) {
                         oCallbacks.onData(oData);
                     }
-                } catch (e) {
+                } catch {
                     // 忽略不完整帧的解析错误
                 }
             }

@@ -22,8 +22,12 @@
     "start": "cds-serve",
     "dev": "cds watch --open ai-chat-gui/webapp/index.html?sap-ui-xx-viewCache=false",
     "watch-ai-chat-gui": "cds watch --open ai-chat-gui/webapp/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "doctor": "node scripts/doctor.js",
+    "lint": "npx eslint srv app/ai-chat-gui/webapp/controller app/ai-chat-gui/webapp/util app/ai-chat-gui/webapp/Component.js --max-warnings=0",
+    "verify": "node scripts/verify.js",
     "undeploy": "cf undeploy abap-clean-core-ai-fiori-new --delete-services --delete-service-keys --delete-service-brokers",
-    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "build:mta": "node scripts/build-mta.js build --mtar archive",
+    "build": "rimraf resources mta_archives && npm run build:mta",
     "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
   },
   "private": true,

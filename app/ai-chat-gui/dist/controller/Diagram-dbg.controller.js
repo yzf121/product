@@ -1,11 +1,9 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/m/MessageBox",
     "sap/m/MessageToast",
     "sap/ui/model/json/JSONModel",
-    "sap/ui/core/HTML",
     "com/ai/assistant/aichatapp/util/Utils"
-], function (Controller, MessageBox, MessageToast, JSONModel, HTML, Utils) {
+], function (Controller, MessageToast, JSONModel, Utils) {
     "use strict";
 
     return Controller.extend("com.ai.assistant.aichatapp.controller.Diagram", {
@@ -367,6 +365,7 @@ sap.ui.define([
             }
 
             var sFullContent = "";
+            var sStreamError = "";
             this._abortActiveDiagramRequest();
             var oAbortController = new AbortController();
             this._oActiveDiagramRequestController = oAbortController;
@@ -401,7 +400,10 @@ sap.ui.define([
                 return Utils.parseSSEStream(response, {
                     onData: function (oData) {
                         if (oData.error) {
-                            MessageToast.show(oData.error);
+                            if (!sStreamError) {
+                                sStreamError = oData.error;
+                                MessageToast.show(sStreamError);
+                            }
                             return;
                         }
 
@@ -418,11 +420,22 @@ sap.ui.define([
                             finalizeRequest();
                             return;
                         }
+
+                        if (sStreamError && !sFullContent) {
+                            oModel.setProperty("/showFixButton", false);
+                            oModel.setProperty("/errorMessage", "");
+                            finalizeRequest();
+                            return;
+                        }
+
                         that._processAIResponse(sFullContent, bIsFixRequest);
                         finalizeRequest();
                     },
                     onError: function (error) {
                         console.error("[Diagram] 流读取错误:", error);
+                        if (!that._isExiting) {
+                            MessageToast.show(that._getI18nText("connectionInterrupted"));
+                        }
                         finalizeRequest();
                     }
                 });
@@ -564,7 +577,6 @@ sap.ui.define([
          */
         onFixOutputFormat: function () {
             var oModel = this.getView().getModel("diagram");
-            var sLastResponse = oModel.getProperty("/lastAiResponse");
             var sOriginalInput = oModel.getProperty("/inputValue");
 
             var sFixPrompt =
@@ -1068,7 +1080,9 @@ sap.ui.define([
                 try {
                     var msg = JSON.parse(event.data);
                     that._handleDrawioMsg(msg);
-                } catch (e) { }
+                } catch {
+                    // ignore malformed cross-window message payload
+                }
             };
             window.addEventListener("message", this._fnDrawioHandler);
         },
@@ -1162,6 +1176,10 @@ sap.ui.define([
         onDrawioCopyImage: function () {
             var that = this;
             if (!this._oDrawioIframe || !this._oDrawioIframe.contentWindow) return;
+            if (!navigator.clipboard || !navigator.clipboard.write) {
+                MessageToast.show(this._getI18nText("clipboardNotSupported"));
+                return;
+            }
 
             this._clearDrawioCopyHandler();
 
@@ -1183,7 +1201,9 @@ sap.ui.define([
                                 MessageToast.show(that._getI18nText("copyImageFailed"));
                             });
                     }
-                } catch (e) { }
+                } catch {
+                    // ignore malformed cross-window message payload
+                }
             };
             this._fnDrawioCopyHandler = fnHandler;
             window.addEventListener("message", this._fnDrawioCopyHandler);

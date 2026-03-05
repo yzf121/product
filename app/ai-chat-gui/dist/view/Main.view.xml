@@ -160,7 +160,7 @@
                                     tooltip="{i18n>uploadFile}"
                                     enabled="{= !${chat>/isLoading}}"/>
                                 <!-- 隐藏的文件输入 -->
-                                <core:HTML id="fileInputContainer" content="&lt;input type='file' id='hiddenFileInput' style='display:none' accept='.pdf,.doc,.docx,.txt,.md,.json,.xml,.csv,.xlsx,.xls,.ppt,.pptx'/&gt;"/>
+                                <core:HTML id="fileInputContainer" content="&lt;input type='file' id='hiddenFileInput' style='display:none' accept='.pdf,.docx,.txt,.md,.json,.xml,.csv,.xlsx,.xls'/&gt;"/>
                                 <TextArea
                                     id="messageInput"
                                     value="{chat>/inputValue}"

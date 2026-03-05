@@ -51,11 +51,11 @@ sap.ui.define([
                         this._aAllConversations = aConversations;
                     }
                 }
-            } catch (e) {
+            } catch {
                 // 如果数据损坏，清除并重置
                 try {
                     localStorage.removeItem(STORAGE_KEY);
-                } catch (removeError) {
+                } catch {
                     // 忽略清除错误
                 }
             }
@@ -100,10 +100,10 @@ sap.ui.define([
                         this._aAllConversations = aAllConversations;
                         
                         try {
-                            var aStoredConversations = this._sanitizeConversationsForStorage(aAllConversations);
+                            aStoredConversations = this._sanitizeConversationsForStorage(aAllConversations);
                             localStorage.setItem(STORAGE_KEY, JSON.stringify(aStoredConversations));
                             MessageToast.show("存储空间不足，已自动清理部分历史对话");
-                        } catch (retryError) {
+                        } catch {
                             MessageToast.show("存储空间不足，无法保存对话历史");
                         }
                     } else {

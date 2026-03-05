@@ -2,9 +2,12 @@ const cds = require('@sap/cds');
 require('dotenv').config();
 
 // 从环境变量读取阿里云百炼API配置
-const DASHSCOPE_APP_ID = process.env.DASHSCOPE_APP_ID;
+const DASHSCOPE_APP_ID = process.env.DASHSCOPE_APP_ID || process.env.DASHSCOPE_APP_ID_ABAP;
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
-const DASHSCOPE_API_URL = `https://dashscope.aliyuncs.com/api/v1/apps/${DASHSCOPE_APP_ID}/completion`;
+
+function buildDashScopeApiUrl(appId) {
+    return `https://dashscope.aliyuncs.com/api/v1/apps/${appId}/completion`;
+}
 
 // API请求超时时间（毫秒）
 const API_TIMEOUT = 60000;
@@ -33,6 +36,8 @@ module.exports = class ChatService extends cds.ApplicationService {
             throw new Error('AI service configuration is missing');
         }
 
+        const apiUrl = buildDashScopeApiUrl(DASHSCOPE_APP_ID);
+
 
         const requestBody = {
             input: {
@@ -55,7 +60,7 @@ module.exports = class ChatService extends cds.ApplicationService {
         }, API_TIMEOUT);
 
         try {
-            const response = await fetch(DASHSCOPE_API_URL, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,

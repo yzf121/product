@@ -42,6 +42,12 @@ DASHSCOPE_API_KEY=sk-xxxx
 DASHSCOPE_APP_ID=xxxx
 ```
 
+建议先复制模板文件：
+
+```bash
+cp .env.example .env
+```
+
 按助手细分（可选）：
 
 ```bash
@@ -69,10 +75,7 @@ npm run dev
 
 ## 文件解析说明（当前实现）
 
-前端可选扩展名包含：`.pdf .doc .docx .txt .md .json .xml .csv .xlsx .xls .ppt .pptx`。  
-其中已实现本地解析链路的是：`txt/md/json/csv/xml/pdf/docx/xlsx/xls`。
-
-`.doc/.ppt/.pptx` 目前会进入“不支持浏览器直接解析”提示，建议先转 `docx` 或 `pdf`。
+前端可选扩展名与已实现本地解析能力保持一致：`txt/md/json/csv/xml/pdf/docx/xlsx/xls`。
 
 ## 常用命令
 
@@ -80,6 +83,10 @@ npm run dev
 | --- | --- |
 | `npm run dev` | 本地开发（cds watch） |
 | `npm run start` | 生产方式启动 CAP 服务 |
+| `npm run doctor` | 检查本机 Node/mbt/make 工具链是否满足构建条件 |
+| `npm run lint` | 仅检查项目源码（排除三方压缩库与构建产物） |
+| `npm run verify` | 一键执行 lint + 语法检查 + CDS 编译 + UI5 构建 |
+| `npm run build:mta` | 仅执行 MTAR 构建（包含 mbt 二进制自愈） |
 | `npm run build` | 生成 `mta_archives/archive.mtar` |
 | `npm run deploy` | 部署 MTAR 到 Cloud Foundry |
 | `npm run undeploy` | 卸载应用及关联服务 |

@@ -51,8 +51,7 @@ npm run build
 
 ## 附件解析能力（当前）
 
-已实现解析：`txt/md/json/csv/xml/pdf/docx/xlsx/xls`。  
-扩展名虽允许选择但暂未实现解析：`doc/ppt/pptx`。
+已实现解析（且文件选择器已与能力对齐）：`txt/md/json/csv/xml/pdf/docx/xlsx/xls`。
 
 ## 部署相关
 

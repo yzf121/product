@@ -3,15 +3,15 @@ const express = require('express');
 const net = require('net');
 require('dotenv').config();
 
-// ===================== 环境变量配置 =====================
-// 从环境变量读取阿里云百炼API配置
+// comment
+// comment
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 
-// FSD转TSD助手专用API Key（可独立配置，不同于全局API Key）
+// Dedicated API keys for FSD->TSD assistants (optional)
 const DASHSCOPE_API_KEY_FSD2TSD_I = process.env.DASHSCOPE_API_KEY_FSD2TSD_I;
 const DASHSCOPE_API_KEY_FSD2TSD_E = process.env.DASHSCOPE_API_KEY_FSD2TSD_E;
 
-// AI类型与应用ID的映射关系
+// comment
 const AI_APP_ID_MAP = {
     'abap-clean-core': process.env.DASHSCOPE_APP_ID_ABAP || process.env.DASHSCOPE_APP_ID,
     'cpi': process.env.DASHSCOPE_APP_ID_CPI,
@@ -24,65 +24,197 @@ const AI_APP_ID_MAP = {
     'diagram': process.env.DASHSCOPE_APP_ID_DIAGRAM
 };
 
-// AI类型与专用API Key的映射（没有专用Key的使用全局Key）
+// comment
 const AI_API_KEY_MAP = {
     'fsd2tsd-i': DASHSCOPE_API_KEY_FSD2TSD_I,
     'fsd2tsd-e': DASHSCOPE_API_KEY_FSD2TSD_E
 };
 
-// 默认应用ID（ABAP Clean Core）
+// comment
 const DEFAULT_APP_ID = process.env.DASHSCOPE_APP_ID || process.env.DASHSCOPE_APP_ID_ABAP;
+// comment
+const API_TIMEOUT = 60000;
+
+function parsePositiveInt(value, fallbackValue) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return fallbackValue;
+    }
+    return parsed;
+}
+
+const CHAT_REQUEST_LIMIT = process.env.CHAT_REQUEST_LIMIT || '20mb';
+const CHAT_MESSAGE_MAX_LENGTH = parsePositiveInt(process.env.CHAT_MESSAGE_MAX_LENGTH || '120000', 120000);
+const CHAT_HISTORY_MAX_MESSAGES = parsePositiveInt(process.env.CHAT_HISTORY_MAX_MESSAGES || '20', 20);
+const CHAT_SESSION_ID_MAX_LENGTH = parsePositiveInt(process.env.CHAT_SESSION_ID_MAX_LENGTH || '256', 256);
+const CHAT_SSE_BUFFER_MAX_LENGTH = parsePositiveInt(process.env.CHAT_SSE_BUFFER_MAX_LENGTH || '1048576', 1048576);
+const CHAT_UPSTREAM_ERROR_MAX_LENGTH = parsePositiveInt(process.env.CHAT_UPSTREAM_ERROR_MAX_LENGTH || '300', 300);
 
 /**
- * 根据AI类型获取对应的应用ID
+  *
  */
 function getAppIdByType(aiType) {
     const appId = AI_APP_ID_MAP[aiType];
     if (appId) {
-        console.log(`[AI] 使用 ${aiType} 助手，应用ID: ${appId.substring(0, 8)}...`);
+        console.log(`[AI] Using ${aiType} assistant, app ID: ${appId.substring(0, 8)}...`);
         return appId;
     }
-    console.log(`[AI] 未配置 ${aiType} 助手，使用默认应用ID`);
+    console.log(`[AI] ${aiType} assistant not configured, using default app ID`);
     return DEFAULT_APP_ID;
 }
 
 /**
- * 根据AI类型获取对应的API Key（支持专用Key）
+  *
  */
 function getApiKeyByType(aiType) {
     const specialKey = AI_API_KEY_MAP[aiType];
     if (specialKey) {
-        console.log(`[AI] 使用 ${aiType} 专用API Key`);
+        console.log(`[AI] Using dedicated API key for ${aiType}`);
         return specialKey;
     }
     return DASHSCOPE_API_KEY;
 }
 
 /**
- * 根据应用ID构建API URL
+  *
  */
 function buildApiUrl(appId) {
     return `https://dashscope.aliyuncs.com/api/v1/apps/${appId}/completion`;
 }
 
-// 检查API配置是否完整
-if (!DEFAULT_APP_ID || !DASHSCOPE_API_KEY) {
-    console.warn('警告: 阿里云百炼API配置不完整，请检查.env文件');
+function sanitizeMessageContent(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+    return value.trim();
 }
 
-// 打印已配置的AI助手
-console.log('[AI] 已配置的助手:');
+function normalizeSessionId(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+    return value.trim().slice(0, CHAT_SESSION_ID_MAX_LENGTH);
+}
+
+function normalizeMessages(rawMessages) {
+    if (!Array.isArray(rawMessages)) {
+        return [];
+    }
+
+    const allowedRoles = new Set(['user', 'assistant']);
+
+    return rawMessages
+        .map((item) => {
+            if (!item || typeof item !== 'object') {
+                return null;
+            }
+
+            const role = typeof item.role === 'string' ? item.role.trim().toLowerCase() : '';
+            const content = typeof item.content === 'string' ? item.content.trim() : '';
+
+            if (!allowedRoles.has(role) || !content) {
+                return null;
+            }
+
+            return {
+                role,
+                content: content.slice(0, CHAT_MESSAGE_MAX_LENGTH)
+            };
+        })
+        .filter(Boolean)
+        .slice(-CHAT_HISTORY_MAX_MESSAGES);
+}
+
+function extractUpstreamErrorMessage(data) {
+    if (!data || typeof data !== 'object') {
+        return '';
+    }
+
+    const output = data.output && typeof data.output === 'object' ? data.output : null;
+    const hasText = Boolean(output && typeof output.text === 'string' && output.text);
+
+    if (hasText) {
+        return '';
+    }
+
+    const candidates = [
+        typeof data.error === 'string' ? data.error : '',
+        typeof data.message === 'string' ? data.message : '',
+        output && typeof output.error === 'string' ? output.error : '',
+        output && typeof output.error_message === 'string' ? output.error_message : '',
+        typeof data.code === 'string' ? `Upstream error: ${data.code}` : '',
+        typeof data.status_code === 'number' ? `Upstream status: ${data.status_code}` : ''
+    ];
+
+    const match = candidates.find((item) => item && item.trim());
+    return normalizeErrorMessage(match);
+}
+
+function normalizeErrorMessage(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+
+    const compact = value.replace(/\s+/g, ' ').trim();
+    if (!compact) {
+        return '';
+    }
+
+    if (compact.length <= CHAT_UPSTREAM_ERROR_MAX_LENGTH) {
+        return compact;
+    }
+
+    return `${compact.slice(0, CHAT_UPSTREAM_ERROR_MAX_LENGTH)}...`;
+}
+
+function extractUpstreamHttpErrorMessage(rawText, statusCode) {
+    const normalizedRawText = typeof rawText === 'string' ? rawText.trim() : '';
+    if (!normalizedRawText) {
+        return `AI service request failed (HTTP ${statusCode})`;
+    }
+
+    try {
+        const parsed = JSON.parse(normalizedRawText);
+        const output = parsed && typeof parsed.output === 'object' ? parsed.output : null;
+        const candidates = [
+            typeof parsed.error === 'string' ? parsed.error : '',
+            typeof parsed.message === 'string' ? parsed.message : '',
+            output && typeof output.error === 'string' ? output.error : '',
+            output && typeof output.error_message === 'string' ? output.error_message : '',
+            output && typeof output.text === 'string' ? output.text : ''
+        ];
+
+        const match = candidates.find((item) => item && item.trim());
+        const normalizedMatch = normalizeErrorMessage(match);
+        if (normalizedMatch) {
+            return normalizedMatch;
+        }
+    } catch {
+        // ignore parse error and fallback to plain text
+    }
+
+    const plainTextError = normalizeErrorMessage(normalizedRawText);
+    if (plainTextError) {
+        return plainTextError;
+    }
+
+    return `AI service request failed (HTTP ${statusCode})`;
+}
+
+// comment
+if (!DEFAULT_APP_ID || !DASHSCOPE_API_KEY) {
+    console.warn("Warning: DashScope API configuration is incomplete. Please check .env");
+}
+
+// Print configured assistant mappings
+console.log("[AI] Configured assistants:");
 Object.entries(AI_APP_ID_MAP).forEach(([type, id]) => {
     if (id) {
         console.log(`  - ${type}: ${id.substring(0, 8)}...`);
     }
 });
 
-// API请求超时时间（毫秒）
-const API_TIMEOUT = 60000;
-const CHAT_REQUEST_LIMIT = process.env.CHAT_REQUEST_LIMIT || '20mb';
-
-// ===================== 端口检测辅助函数 =====================
+// comment
 
 function isPortAvailable(port) {
     return new Promise((resolve) => {
@@ -104,19 +236,19 @@ async function findAvailablePort(startPort, maxAttempts = 10) {
         const available = await isPortAvailable(port);
         if (available) {
             if (i > 0) {
-                console.log(`[cds] - 端口 ${startPort} 被占用，自动切换到端口 ${port}`);
+                console.log(`[cds] - Port ${startPort} is occupied, auto-switch to ${port}`);
             }
             return port;
         }
-        console.log(`[cds] - 端口 ${port} 被占用，尝试下一个...`);
+        console.log(`[cds] - Port ${port} is occupied, trying next...`);
     }
-    throw new Error(`无法找到可用端口（已尝试 ${startPort} - ${startPort + maxAttempts - 1}）`);
+    throw new Error(`No available port found (tried ${startPort} - ${startPort + maxAttempts - 1})`);
 }
 
-// ===================== CDS 服务器扩展 =====================
+// ===================== CDS server bootstrap extensions =====================
 
 cds.on('bootstrap', (app) => {
-    // JSON 解析中间件
+    // comment
     app.use('/api/chat/stream', express.json({ limit: CHAT_REQUEST_LIMIT }));
     app.use('/api/chat/stream', (err, _req, res, next) => {
         if (!err) {
@@ -124,29 +256,37 @@ cds.on('bootstrap', (app) => {
         }
 
         if (err.type === 'entity.too.large') {
-            return res.status(413).json({ error: '请求内容过大，请减少单次发送内容后重试' });
+            return res.status(413).json({ error: "Request payload is too large. Please reduce input size and retry" });
         }
 
         if (err instanceof SyntaxError) {
-            return res.status(400).json({ error: '请求体 JSON 格式错误' });
+            return res.status(400).json({ error: "Request body JSON is invalid" });
         }
 
         return next(err);
     });
 
-    // ==================== 流式聊天接口 ====================
+    // comment
 
     /**
-     * POST /api/chat/stream - 流式聊天（支持会话文件）
+      *
      */
     app.post('/api/chat/stream', async (req, res) => {
-        const { message, sessionId, aiType, messages, sessionInfo } = req.body;
+        const message = sanitizeMessageContent(req.body?.message);
+        const sessionId = normalizeSessionId(req.body?.sessionId);
+        const aiType = typeof req.body?.aiType === 'string' ? req.body.aiType.trim() : '';
+        const messages = normalizeMessages(req.body?.messages);
+        const sessionInfo = req.body?.sessionInfo && typeof req.body.sessionInfo === 'object' ? req.body.sessionInfo : null;
 
         if (!message) {
-            return res.status(400).json({ error: '消息内容不能为空' });
+            return res.status(400).json({ error: "Message content cannot be empty" });
         }
 
-        // 设置SSE响应头
+        if (message.length > CHAT_MESSAGE_MAX_LENGTH) {
+            return res.status(413).json({ error: "Message is too long. Please shorten and retry" });
+        }
+
+        // comment
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
@@ -163,7 +303,7 @@ cds.on('bootstrap', (app) => {
                 res.write(`data: ${JSON.stringify(payload)}\n\n`);
                 return true;
             } catch (writeError) {
-                console.error('[AI] SSE 写入失败:', writeError);
+                console.error("[AI] Failed to write SSE chunk:", writeError);
                 return false;
             }
         };
@@ -176,7 +316,7 @@ cds.on('bootstrap', (app) => {
                 res.write('data: [DONE]\n\n');
                 return true;
             } catch (writeError) {
-                console.error('[AI] SSE DONE 写入失败:', writeError);
+                console.error("[AI] Failed to write SSE DONE marker:", writeError);
                 return false;
             }
         };
@@ -191,7 +331,7 @@ cds.on('bootstrap', (app) => {
         const apiKey = getApiKeyByType(aiType);
 
         if (!appId || !apiKey) {
-            safeWrite({ error: 'AI服务配置不完整，请联系管理员' });
+            safeWrite({ error: "AI service configuration is incomplete. Please contact administrator" });
             safeEnd();
             return;
         }
@@ -205,6 +345,7 @@ cds.on('bootstrap', (app) => {
             controller.abort();
         }, API_TIMEOUT);
         let clientDisconnected = false;
+        let abortedBySseBufferLimit = false;
         const handleClientClose = () => {
             clientDisconnected = true;
             controller.abort();
@@ -214,9 +355,9 @@ cds.on('bootstrap', (app) => {
         try {
             let requestBody;
 
-            // 构建基础请求体
+            // comment
             if (useSessionId) {
-                console.log(`[AI] 使用 session_id 模式，轮次: ${sessionInfo?.roundCount || 0}`);
+                console.log(`[AI] Using session_id mode, round: ${sessionInfo?.roundCount || 0}`);
                 requestBody = {
                     input: {
                         prompt: message,
@@ -227,7 +368,7 @@ cds.on('bootstrap', (app) => {
                     }
                 };
             } else if (messages && messages.length > 0) {
-                console.log(`[AI] 使用 messages 模式（降级），历史消息数: ${messages.length}`);
+                console.log(`[AI] Using messages mode (fallback), history messages: ${messages.length}`);
                 requestBody = {
                     input: {
                         prompt: message,
@@ -238,7 +379,7 @@ cds.on('bootstrap', (app) => {
                     }
                 };
             } else {
-                console.log('[AI] 新对话模式');
+                console.log("[AI] New conversation mode");
                 requestBody = {
                     input: {
                         prompt: message
@@ -269,15 +410,16 @@ cds.on('bootstrap', (app) => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('百炼API错误:', errorText);
-                safeWrite({ error: 'AI服务调用失败' });
+                const upstreamHttpError = extractUpstreamHttpErrorMessage(errorText, response.status);
+                console.error("DashScope API error:", upstreamHttpError);
+                safeWrite({ error: upstreamHttpError });
                 safeEnd();
                 return;
             }
 
             if (!response.body) {
-                console.error('响应体不支持流式读取');
-                safeWrite({ error: '服务器不支持流式响应' });
+                console.error("Response body does not support streaming");
+                safeWrite({ error: "Server does not support streaming response" });
                 safeEnd();
                 return;
             }
@@ -303,12 +445,18 @@ cds.on('bootstrap', (app) => {
 
                 try {
                     const data = JSON.parse(payload);
+                    const upstreamError = extractUpstreamErrorMessage(data);
+                    if (upstreamError) {
+                        safeWrite({ error: upstreamError });
+                        return;
+                    }
+
                     if (data.output && data.output.text) {
                         safeWrite({ text: data.output.text, sessionId: data.output.session_id });
                     }
                 } catch (e) {
-                    // 仅记录异常帧，继续处理后续内容
-                    console.warn('[AI] 无法解析上游SSE分片:', e.message);
+                    // comment
+                    console.warn("[AI] Failed to parse upstream SSE chunk:", e.message);
                 }
             };
 
@@ -340,10 +488,17 @@ cds.on('bootstrap', (app) => {
                 if (done) break;
 
                 sseBuffer += decoder.decode(value, { stream: true });
+                if (sseBuffer.length > CHAT_SSE_BUFFER_MAX_LENGTH) {
+                    abortedBySseBufferLimit = true;
+                    console.error("[AI] Upstream SSE buffer exceeded limit, aborting to protect process");
+                    safeWrite({ error: "Upstream response is abnormal. Please retry later" });
+                    controller.abort();
+                    break;
+                }
                 flushSSEBuffer(false);
             }
 
-            if (!clientDisconnected) {
+            if (!clientDisconnected && !abortedBySseBufferLimit) {
                 sseBuffer += decoder.decode();
                 flushSSEBuffer(true);
                 safeWriteDone();
@@ -355,13 +510,15 @@ cds.on('bootstrap', (app) => {
             clearTimeout(timeoutId);
 
             if (error.name === 'AbortError' && clientDisconnected) {
-                console.log('[AI] 客户端已断开，终止上游请求');
+                console.log("[AI] Client disconnected, upstream request aborted");
+            } else if (error.name === 'AbortError' && abortedBySseBufferLimit) {
+                // comment
             } else if (error.name === 'AbortError') {
-                console.error('API请求超时');
-                safeWrite({ error: 'AI服务响应超时，请稍后重试' });
+                console.error("API request timed out");
+                safeWrite({ error: "AI service timed out. Please retry later" });
             } else {
-                console.error('流式响应错误:', error);
-                safeWrite({ error: '服务器内部错误' });
+                console.error("Streaming response error:", error);
+                safeWrite({ error: "Internal server error" });
             }
             safeEnd();
         } finally {
@@ -370,7 +527,7 @@ cds.on('bootstrap', (app) => {
         }
     });
 
-    // CORS预检请求处理 - 聊天接口
+    // comment
     app.options('/api/chat/stream', (_req, res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -379,14 +536,14 @@ cds.on('bootstrap', (app) => {
     });
 });
 
-// 服务器启动监听
+// comment
 cds.on('listening', ({ server, url }) => {
     const port = server.address().port;
-    console.log(`[cds] - 服务器已启动: ${url}`);
-    console.log(`[cds] - 访问应用: http://localhost:${port}/ai-chat-gui/webapp/index.html`);
+    console.log(`[cds] - Server started: ${url}`);
+    console.log(`[cds] - Open app: http://localhost:${port}/ai-chat-gui/webapp/index.html`);
 });
 
-// 自定义端口绑定
+// comment
 const originalServer = cds.server;
 module.exports = async function (options) {
     const envPort = process.env.PORT;
@@ -402,7 +559,9 @@ module.exports = async function (options) {
         process.env.PORT = availablePort;
         return originalServer.call(cds, options);
     } catch (error) {
-        console.error('[cds] - 启动失败:', error.message);
+        console.error("[cds] - Startup failed:", error.message);
         process.exit(1);
     }
 };
+
+
