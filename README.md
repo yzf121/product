@@ -1,32 +1,31 @@
-# AI 助手平台
-<img width="1843" height="871" alt="image" src="https://github.com/user-attachments/assets/3a7db00e-80ff-471d-9658-7b3bc480a8a1" />
+# AI 助手平台（SAP CAP + UI5 + DashScope）
 
-> **版本**: v1.4.3  
-> **技术栈**: SAP CAP (Node.js) + SAP UI5 Freestyle + 阿里云百炼 AI
+> 版本：`v1.4.3`  
+> 项目 ID：`abap-clean-core-ai-fiori-new`
 
----
+这是一个面向 SAP 开发场景的多助手 AI 平台，后端基于 CAP/Express 提供统一流式网关，前端基于 UI5 提供多助手聊天与流程图能力。
 
-## 📋 项目简介
+## 核心能力
 
-AI 助手平台是一个基于 **SAP CAP** 框架和 **SAP UI5 Freestyle** 前端技术构建的企业级 AI 智能助手应用。集成了**阿里云百炼（DashScope）** 大语言模型 API，为 SAP 开发人员提供多种 AI 辅助工具。
+- 多助手路由：`abap-clean-core`、`cpi`、`func-doc`、`fsd2tsd-i`、`fsd2tsd-e`、`tech-doc`、`code-review`、`unit-test`、`diagram`
+- 流式对话：后端通过 `POST /api/chat/stream` 转发 DashScope SSE
+- 会话策略：优先 `sessionId`，超过轮次/时效自动降级 `messages`
+- 本地文件解析：在浏览器端解析后拼接上下文，不走后端上传
+- Diagram Helper：AI 生成 Mermaid，支持二次编辑、导出 PNG/SVG、Draw.io 打开
+- 本地历史：按 AI 类型管理对话并持久化到 `localStorage`
 
-### 核心功能
+## 架构概览
 
-| 功能模块 | 描述 |
-|---------|------|
-| ABAP Clean Core 助手 | 帮助重构传统 ABAP 代码为云就绪代码 |
-| CPI 集成助手 | SAP CPI Integration Suite 开发指导 |
-| 功能文档生成 | 自动生成功能规格说明文档 |
-| FSD to TSD 助手 (I/E) | 功能设计文档转技术设计文档（实施/增强方向），支持独立 API Key |
-| 技术文档生成 | 自动生成技术设计文档 |
-| 代码审查助手 | 智能代码质量检查 |
-| 单元测试生成 | 自动生成 ABAP 单元测试代码 |
-| 流程图生成 | AI 驱动的 Mermaid 流程图/架构图生成 |
-| 文件极速解析 | 纯前端本地解析 PDF/Word/Excel 等文档，无需后端依赖 |
+```text
+UI5 前端 (app/ai-chat-gui)
+   -> /api/chat/stream
+CAP 自定义服务 (srv/server.js)
+   -> DashScope Apps API
+```
 
----
+部署到 BTP 后，前端由 HTML5 Repo 托管，鉴权由 XSUAA 与 Destination 处理。
 
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 安装依赖
 
@@ -34,88 +33,75 @@ AI 助手平台是一个基于 **SAP CAP** 框架和 **SAP UI5 Freestyle** 前�
 npm install
 ```
 
-### 2. 配置环境变量
+### 2. 配置 `.env`
+
+最少需要：
 
 ```bash
-# 创建 .env 文件并填写 API 密钥
+DASHSCOPE_API_KEY=sk-xxxx
+DASHSCOPE_APP_ID=xxxx
 ```
 
-**必需配置**:
+按助手细分（可选）：
+
 ```bash
-DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxx
-DASHSCOPE_APP_ID=xxxxxxxx
-
-# 各 AI 助手的应用 ID（可选，如未配置则使用默认 ID）
-DASHSCOPE_APP_ID_ABAP=xxxxxxxx
-DASHSCOPE_APP_ID_CPI=xxxxxxxx
-DASHSCOPE_APP_ID_FUNC_DOC=xxxxxxxx
-DASHSCOPE_APP_ID_TECH_DOC=xxxxxxxx
-DASHSCOPE_APP_ID_CODE_REVIEW=xxxxxxxx
-DASHSCOPE_APP_ID_UNIT_TEST=xxxxxxxx
-DASHSCOPE_APP_ID_DIAGRAM=xxxxxxxx
-
-# FSD to TSD 助手（支持独立 API Key）
-DASHSCOPE_APP_ID_FSD2TSD_I=xxxxxxxx
-DASHSCOPE_API_KEY_FSD2TSD_I=sk-xxxxxxxx
-DASHSCOPE_APP_ID_FSD2TSD_E=xxxxxxxx
-DASHSCOPE_API_KEY_FSD2TSD_E=sk-xxxxxxxx
+DASHSCOPE_APP_ID_ABAP=xxxx
+DASHSCOPE_APP_ID_CPI=xxxx
+DASHSCOPE_APP_ID_FUNC_DOC=xxxx
+DASHSCOPE_APP_ID_FSD2TSD_I=xxxx
+DASHSCOPE_API_KEY_FSD2TSD_I=sk-xxxx
+DASHSCOPE_APP_ID_FSD2TSD_E=xxxx
+DASHSCOPE_API_KEY_FSD2TSD_E=sk-xxxx
+DASHSCOPE_APP_ID_TECH_DOC=xxxx
+DASHSCOPE_APP_ID_CODE_REVIEW=xxxx
+DASHSCOPE_APP_ID_UNIT_TEST=xxxx
+DASHSCOPE_APP_ID_DIAGRAM=xxxx
 ```
 
-### 3. 启动开发服务器
+### 3. 启动开发环境
 
 ```bash
 npm run dev
 ```
 
-访问 http://localhost:4004/ai-chat-gui/webapp/index.html
+默认入口：`http://localhost:4004/ai-chat-gui/webapp/index.html`  
+若 `4004` 被占用，服务会自动尝试 `4005` 起的可用端口。
 
----
+## 文件解析说明（当前实现）
 
-## 📁 目录结构
+前端可选扩展名包含：`.pdf .doc .docx .txt .md .json .xml .csv .xlsx .xls .ppt .pptx`。  
+其中已实现本地解析链路的是：`txt/md/json/csv/xml/pdf/docx/xlsx/xls`。
 
+`.doc/.ppt/.pptx` 目前会进入“不支持浏览器直接解析”提示，建议先转 `docx` 或 `pdf`。
+
+## 常用命令
+
+| 命令 | 说明 |
+| --- | --- |
+| `npm run dev` | 本地开发（cds watch） |
+| `npm run start` | 生产方式启动 CAP 服务 |
+| `npm run build` | 生成 `mta_archives/archive.mtar` |
+| `npm run deploy` | 部署 MTAR 到 Cloud Foundry |
+| `npm run undeploy` | 卸载应用及关联服务 |
+
+## 项目结构
+
+```text
+app/ai-chat-gui/    UI5 前端应用
+srv/                CAP 服务与流式网关
+db/                 CDS schema（当前无业务持久化表）
+docs/               项目文档
+mta.yaml            BTP 部署描述
+xs-security.json    XSUAA 安全模型
 ```
-├── app/                    # 前端应用
-│   └── ai-chat-gui/        # UI5 聊天应用
-├── srv/                    # 后端服务
-│   ├── server.js           # 自定义服务器（流式代理网关）
-│   └── chat-service.cds    # CDS 服务定义
-├── docs/                   # 项目文档
-├── package.json            # 项目配置
-├── mta.yaml                # MTA 部署描述符
-└── xs-security.json        # XSUAA 安全配置
-```
 
----
+## 文档索引
 
-## 📖 详细文档
+- [项目技术文档](./docs/项目技术文档.md)
+- [API 接口文档](./docs/API接口文档.md)
+- [部署指南](./docs/部署指南.md)
+- [成本与路线图](./docs/成本与路线图.md)
 
-- [项目技术文档](./docs/项目技术文档.md) - 完整的架构、前后端、配置说明
-- [API 接口文档](./docs/API接口文档.md) - API 规范与使用示例
-- [部署指南](./docs/部署指南.md) - 构建与部署到 SAP BTP 全流程
-- [成本与路线图](./docs/成本与路线图.md) - 费用估算与后续规划
+## 许可
 
----
-
-## 🛠️ 常用命令
-
-| 命令 | 描述 |
-|-----|------|
-| `npm run dev` | 启动开发服务器 |
-| `npm run start` | 生产模式启动 |
-| `npm run build` | 构建 MTA 包 |
-| `npm run deploy` | 部署到 Cloud Foundry |
-| `npm run undeploy` | 从 Cloud Foundry 卸载 |
-
----
-
-## 📋 技术要求
-
-- **Node.js**: >= 18.0.0
-- **SAP UI5**: >= 1.120.0
-- **@sap/cds**: ^9
-
----
-
-## 📄 许可证
-
-本项目仅供内部使用。
+仅用于内部项目与受控环境。

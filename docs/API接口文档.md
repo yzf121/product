@@ -1,207 +1,175 @@
 # API 接口文档
 
-> **版本**: v1.4.3  
-> **更新日期**: 2026-03-04  
-> **基础路径**: `/api`
+> 版本：`v1.4.3`  
+> 更新日期：`2026-03-05`  
+> 基础路径：`/api`
 
----
+本文档以当前代码实现为准（`srv/server.js` + `srv/chat-service.cds/js`）。
 
-## 接口概览
+## 接口一览
 
-| 端点 | 方法 | 描述 |
-|-----|------|------|
-| `/api/chat/stream` | POST | 流式聊天（主要接口） |
-| `/api/chat/sendMessage` | POST | 非流式聊天（CDS 备用） |
+| 端点 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/chat/stream` | `POST` | 主接口，SSE 流式返回 |
+| `/api/chat/sendMessage` | `POST` | 备用非流式接口（CDS Action） |
 
-> 文件解析功能已全部移至前端浏览器本地进行，无后端文件接口。
+## 1. `POST /api/chat/stream`
 
----
+### 1.1 请求头
 
-## 1. 流式聊天接口
+- `Content-Type: application/json`
 
-### 基本信息
+### 1.2 请求体
 
-| 属性 | 值 |
-|-----|-----|
-| **端点** | `POST /api/chat/stream` |
-| **协议** | HTTP + Server-Sent Events (SSE) |
-| **Content-Type (请求)** | `application/json` |
-| **Content-Type (响应)** | `text/event-stream` |
-
-### 请求参数
-
-```typescript
+```ts
 interface ChatStreamRequest {
-    /** 用户消息内容（若有本地解析的文件内容，前端会一并拼接于此） */
-    message: string;         // 必需
-
-    /** AI 助手类型（可选，默认 abap-clean-core） */
-    aiType?: string;
-
-    /** 百炼 session_id（首次对话不传，后续传入上次返回的 sessionId） */
-    sessionId?: string;
-
-    /** 历史消息列表（当 session_id 失效时用于降级） */
-    messages?: { role: "user" | "assistant"; content: string }[];
-
-    /** 会话信息（用于判断是否使用 session_id 模式） */
-    sessionInfo?: {
-        createdAt: string;   // ISO 8601
-        roundCount: number;
-    };
+  message: string; // 必填
+  aiType?:
+    | "abap-clean-core"
+    | "cpi"
+    | "func-doc"
+    | "fsd2tsd-i"
+    | "fsd2tsd-e"
+    | "tech-doc"
+    | "code-review"
+    | "unit-test"
+    | "diagram";
+  sessionId?: string;
+  sessionInfo?: {
+    createdAt: string;   // ISO 8601
+    roundCount: number;
+  };
+  messages?: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }>;
 }
 ```
 
-### 支持的 aiType 值
+### 1.3 行为说明
 
-| aiType | 描述 | API Key |
-|--------|------|---------|
-| `abap-clean-core` | ABAP Clean Core 助手（默认） | 全局 |
-| `cpi` | SAP CPI 集成助手 | 全局 |
-| `func-doc` | 功能文档生成助手 | 全局 |
-| `fsd2tsd-i` | FSD to TSD 助手 (I) | 支持专用 Key |
-| `fsd2tsd-e` | FSD to TSD 助手 (E) | 支持专用 Key |
-| `tech-doc` | 技术文档生成助手 | 全局 |
-| `code-review` | 代码审查助手 | 全局 |
-| `unit-test` | 单元测试生成助手 | 全局 |
-| `diagram` | 流程图生成助手 | 全局 |
+- `message` 为空时：返回 `400` JSON 错误。
+- 有 `sessionId` 时：后端优先走 `session_id` 模式。
+- 无 `sessionId` 但有 `messages` 时：走降级历史消息模式。
+- 都没有时：按新会话模式处理。
+- `aiType` 未配置时：回退到默认 App ID（`DASHSCOPE_APP_ID`）。
 
-> 未传 `aiType` 时默认使用 `abap-clean-core`。未配置的 aiType 会回退到默认应用 ID。
+### 1.4 `aiType` 与配置映射
 
-### 请求示例
+| aiType | App ID 环境变量 | 专用 API Key |
+| --- | --- | --- |
+| `abap-clean-core` | `DASHSCOPE_APP_ID_ABAP`（或默认） | 无 |
+| `cpi` | `DASHSCOPE_APP_ID_CPI` | 无 |
+| `func-doc` | `DASHSCOPE_APP_ID_FUNC_DOC` | 无 |
+| `fsd2tsd-i` | `DASHSCOPE_APP_ID_FSD2TSD_I` | `DASHSCOPE_API_KEY_FSD2TSD_I` |
+| `fsd2tsd-e` | `DASHSCOPE_APP_ID_FSD2TSD_E` | `DASHSCOPE_API_KEY_FSD2TSD_E` |
+| `tech-doc` | `DASHSCOPE_APP_ID_TECH_DOC` | 无 |
+| `code-review` | `DASHSCOPE_APP_ID_CODE_REVIEW` | 无 |
+| `unit-test` | `DASHSCOPE_APP_ID_UNIT_TEST` | 无 |
+| `diagram` | `DASHSCOPE_APP_ID_DIAGRAM` | 无 |
 
-**新对话:**
-```json
-{
-    "message": "请帮我分析这段 ABAP 代码",
-    "aiType": "abap-clean-core"
-}
-```
+### 1.5 响应格式（SSE）
 
-**继续对话（带 session_id）:**
-```json
-{
-    "message": "能否给出更具体的建议？",
-    "aiType": "abap-clean-core",
-    "sessionId": "session_abc123def456",
-    "sessionInfo": {
-        "createdAt": "2025-01-08T10:00:00Z",
-        "roundCount": 5
-    }
-}
-```
+响应头：
 
-**降级模式（带 messages）:**
-```json
-{
-    "message": "继续上述话题",
-    "aiType": "abap-clean-core",
-    "messages": [
-        {"role": "user", "content": "请帮我分析代码"},
-        {"role": "assistant", "content": "好的，我来帮你分析..."}
-    ],
-    "sessionInfo": {
-        "createdAt": "2025-01-08T08:00:00Z",
-        "roundCount": 55
-    }
-}
-```
+- `Content-Type: text/event-stream`
+- `Cache-Control: no-cache`
+- `Connection: keep-alive`
+- `Access-Control-Allow-Origin: *`
 
-### 响应格式（SSE）
+数据帧：
 
-```
-data: {"text": "我来帮你分析", "sessionId": "session_abc123"}
+```text
+data: {"text":"...","sessionId":"..."}
 
-data: {"text": "这段代码", "sessionId": "session_abc123"}
+data: {"error":"..."}
 
 data: [DONE]
 ```
 
-### 错误响应
+说明：
 
-```
-data: {"error": "AI服务配置不完整，请联系管理员"}
-data: {"error": "AI服务响应超时，请稍后重试"}
-data: {"error": "消息内容不能为空"}
-```
+- `text`：增量文本片段。
+- `sessionId`：首次从上游返回后，前端可持久化并复用。
+- `[DONE]`：结束标记。
 
-### HTTP 状态码
+### 1.6 状态码
 
-| 状态码 | 描述 |
-|-------|------|
-| 200 | 成功（SSE 流） |
-| 400 | 请求参数错误（如 message 为空） |
-| 401 | 未授权（生产环境） |
-| 500 | 服务器内部错误 |
+| 状态码 | 场景 |
+| --- | --- |
+| `200` | 正常 SSE 返回（含业务错误事件） |
+| `400` | `message` 为空、JSON 语法错误 |
+| `413` | 请求体超过限制（默认 `20mb`，可通过 `CHAT_REQUEST_LIMIT` 调整） |
+| `500` | 中间件或服务端异常 |
 
----
+## 2. `POST /api/chat/sendMessage`（备用）
 
-## 2. 非流式聊天接口（备用）
+CDS Action，非流式。
 
-| 属性 | 值 |
-|-----|-----|
-| **端点** | `POST /api/chat/sendMessage` |
-| **Content-Type** | `application/json` |
+请求示例：
 
-> ⚠️ 此接口为 CDS 备用接口，一般使用流式接口。
-
-**请求:**
 ```json
-{ "message": "你好", "sessionId": "session_abc123" }
-```
-
-**响应:**
-```json
-{ "value": "你好！我是 AI 助手" }
-```
-
----
-
-## 3. CORS 配置
-
-```
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: POST, OPTIONS
-Access-Control-Allow-Headers: Content-Type
-```
-
----
-
-## 4. JavaScript 使用示例
-
-```javascript
-async function streamChat(message, aiType, sessionId) {
-    const response = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, aiType, sessionId })
-    });
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = '', newSessionId = sessionId;
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-            if (line.startsWith('data:')) {
-                const jsonStr = line.slice(5).trim();
-                if (jsonStr === '[DONE]') continue;
-                try {
-                    const data = JSON.parse(jsonStr);
-                    if (data.text) fullText += data.text;
-                    if (data.sessionId) newSessionId = data.sessionId;
-                } catch (e) {}
-            }
-        }
-    }
-    return { text: fullText, sessionId: newSessionId };
+{
+  "message": "你好",
+  "sessionId": "optional-session-id"
 }
 ```
 
----
+响应示例：
 
-*最后更新: 2026-03-04*
+```json
+{
+  "value": "AI 返回文本"
+}
+```
+
+## 3. CORS 与预检
+
+后端显式处理了：
+
+- `OPTIONS /api/chat/stream`
+- `Access-Control-Allow-Methods: POST, OPTIONS`
+- `Access-Control-Allow-Headers: Content-Type`
+
+## 4. 前端调用示例（浏览器）
+
+```javascript
+async function callStream(message, aiType, sessionId) {
+  const response = await fetch("/api/chat/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, aiType, sessionId })
+  });
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") continue;
+      const data = JSON.parse(payload);
+      if (data.text) {
+        // 渲染增量文本
+      }
+      if (data.error) {
+        // 处理错误
+      }
+    }
+  }
+}
+```
+
+## 5. 认证说明
+
+- 本地开发：默认无 XSUAA 强制鉴权。
+- Cloud Foundry 部署：通过 `xs-app.json` + destination `srv-api` 使用 `xsuaa` 鉴权。
