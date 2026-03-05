@@ -391,6 +391,10 @@ body,
     opacity: 1;
 }
 
+.userMessage .messageActionArea {
+    opacity: 1;
+}
+
 /* 消息级别的复制按钮 */
 .copyMessageBtn {
     background-color: transparent;
@@ -408,6 +412,25 @@ body,
 .copyMessageBtn:hover {
     background-color: rgba(161, 0, 255, 0.1);
     color: #A100FF;
+}
+
+.editLastUserMessageBtn {
+    background-color: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 0.28rem 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.76rem;
+}
+
+.editLastUserMessageBtn:hover {
+    background-color: rgba(255, 255, 255, 0.24);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 
@@ -441,6 +464,12 @@ body,
     box-shadow: 0 12px 40px rgba(161, 0, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.8);
     border: 1px solid rgba(161, 0, 255, 0.3);
     background: rgba(255, 255, 255, 0.85);
+}
+
+.inputAreaGlass.dragOver {
+    border: 1px dashed rgba(10, 110, 209, 0.85);
+    box-shadow: 0 12px 28px rgba(10, 110, 209, 0.2), inset 0 0 0 1px rgba(10, 110, 209, 0.25);
+    background: linear-gradient(135deg, rgba(232, 243, 255, 0.95), rgba(246, 251, 255, 0.95));
 }
 
 .uploadButtonGlass.sapMBtn {
@@ -683,6 +712,20 @@ body,
     padding: 0.2rem 0.35rem 0.5rem 0.35rem;
 }
 
+.conversationSearchField {
+    margin: 0.35rem 0.35rem 0.2rem 0.35rem;
+}
+
+.conversationSearchField .sapMSFF {
+    border-radius: 10px;
+    border: 1px solid rgba(10, 110, 209, 0.16);
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.conversationSearchField .sapMSFF:hover {
+    border-color: rgba(10, 110, 209, 0.3);
+}
+
 #conversationList {
     background: transparent;
 }
@@ -751,6 +794,16 @@ body,
 
 #conversationList .conversationTextBlock {
     min-width: 0;
+}
+
+.conversationTitleRow {
+    gap: 0.35rem;
+}
+
+.conversationPinnedIcon {
+    font-size: 0.72rem;
+    color: #d98200;
+    flex-shrink: 0;
 }
 
 /* 列表标题 */

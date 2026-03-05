@@ -71,8 +71,10 @@
                     "data": {
                         "messages": [],
                         "conversations": [],
+                        "visibleConversations": [],
                         "currentConversationId": null,
                         "attachments": [],
+                        "conversationSearchQuery": "",
                         "inputValue": "",
                         "isLoading": false,
                         "sidebarExpanded": true
