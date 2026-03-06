@@ -71,53 +71,86 @@ sap.ui.define([], function () {
             var decoder = new TextDecoder();
             var sBuffer = "";
 
-            function processLine(sLine) {
-                if (!sLine || !sLine.startsWith("data:")) {
-                    return;
+            function processEventBlock(sEventBlock) {
+                if (!sEventBlock) {
+                    return false;
                 }
 
-                var sData = sLine.slice(5).trim();
-                if (!sData || sData === "[DONE]") {
-                    return;
+                var aDataLines = sEventBlock.split("\n").filter(function (sLine) {
+                    return sLine.indexOf("data:") === 0;
+                }).map(function (sLine) {
+                    return sLine.slice(5).trim();
+                });
+
+                if (!aDataLines.length) {
+                    return false;
+                }
+
+                var sPayload = aDataLines.join("\n").trim();
+                if (!sPayload) {
+                    return false;
+                }
+
+                if (sPayload === "[DONE]") {
+                    return true;
                 }
 
                 try {
-                    var oData = JSON.parse(sData);
+                    var oData = JSON.parse(sPayload);
                     if (oCallbacks.onData) {
                         oCallbacks.onData(oData);
                     }
                 } catch {
-                    // 忽略不完整帧的解析错误
+                    // 忽略不完整帧的解析错误，继续读取后续数据
                 }
+
+                return false;
             }
 
-            function handleChunk(sChunk) {
-                sBuffer += sChunk;
-                var aLines = sBuffer.split(/\r?\n/);
-                sBuffer = aLines.pop();
-                aLines.forEach(processLine);
+            function flushBuffer(bForceFlushTail) {
+                var bReceivedDoneMarker = false;
+                var sNormalized = sBuffer.replace(/\r\n/g, "\n");
+                var nBoundaryIndex = sNormalized.indexOf("\n\n");
+
+                while (nBoundaryIndex !== -1) {
+                    var sEventBlock = sNormalized.slice(0, nBoundaryIndex);
+                    sNormalized = sNormalized.slice(nBoundaryIndex + 2);
+                    if (processEventBlock(sEventBlock)) {
+                        bReceivedDoneMarker = true;
+                    }
+                    nBoundaryIndex = sNormalized.indexOf("\n\n");
+                }
+
+                if (bForceFlushTail && sNormalized.trim()) {
+                    if (processEventBlock(sNormalized)) {
+                        bReceivedDoneMarker = true;
+                    }
+                    sNormalized = "";
+                }
+
+                sBuffer = sNormalized;
+                return bReceivedDoneMarker;
             }
 
             function readStream() {
-                return reader.read().then(function (result) {
-                    if (result.done) {
-                        if (sBuffer.trim()) {
-                            processLine(sBuffer);
-                        }
+                return reader.read().then(function (oResult) {
+                    if (oResult.done) {
+                        sBuffer += decoder.decode();
+                        flushBuffer(true);
                         if (oCallbacks.onDone) {
                             oCallbacks.onDone();
                         }
                         return;
                     }
 
-                    var sChunk = decoder.decode(result.value, { stream: true });
-                    handleChunk(sChunk);
-
+                    sBuffer += decoder.decode(oResult.value, { stream: true });
+                    flushBuffer(false);
                     return readStream();
                 }).catch(function (error) {
                     if (oCallbacks.onError) {
                         oCallbacks.onError(error);
                     }
+                    return Promise.reject(error);
                 });
             }
 

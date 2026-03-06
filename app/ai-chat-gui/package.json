@@ -15,6 +15,8 @@
     "ui5-task-zipper": "^3.4.0"
   },
   "scripts": {
+    "start": "ui5 serve --config ui5.yaml --open index.html?sap-ui-xx-viewCache=false",
+    "dev": "ui5 serve --config ui5.yaml --open index.html?sap-ui-xx-viewCache=false",
     "deploy-config": "npx -p @sap/ux-ui5-tooling fiori add deploy-config cf",
     "build:cf": "ui5 build preload --clean-dest --config ui5-deploy.yaml --include-task=generateCachebusterInfo",
     "build": "npm run build:cf"

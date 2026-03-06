@@ -2,8 +2,9 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageToast",
     "sap/ui/model/json/JSONModel",
-    "com/ai/assistant/aichatapp/util/Utils"
-], function (Controller, MessageToast, JSONModel, Utils) {
+    "com/ai/assistant/aichatapp/util/Utils",
+    "com/ai/assistant/aichatapp/util/AIClient"
+], function (Controller, MessageToast, JSONModel, Utils, AIClient) {
     "use strict";
 
     return Controller.extend("com.ai.assistant.aichatapp.controller.Diagram", {
@@ -380,65 +381,41 @@ sap.ui.define([
                 }
             };
 
-            // 调用流式 API
-            fetch("/api/chat/stream", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(oRequestBody),
-                signal: oAbortController.signal
-            }).then(function (response) {
-                if (!response.ok) {
-                    throw new Error(that._getI18nText("networkError"));
-                }
-
-                if (!response.body) {
-                    throw new Error(that._getI18nText("streamNotSupported"));
-                }
-
-                return Utils.parseSSEStream(response, {
-                    onData: function (oData) {
-                        if (oData.error) {
-                            if (!sStreamError) {
-                                sStreamError = oData.error;
-                                MessageToast.show(sStreamError);
-                            }
-                            return;
+            AIClient.streamChat(oRequestBody, {
+                signal: oAbortController.signal,
+                onData: function (oData) {
+                    if (oData.error) {
+                        if (!sStreamError) {
+                            sStreamError = oData.error;
+                            MessageToast.show(sStreamError);
                         }
-
-                        if (oData.text) {
-                            sFullContent += oData.text;
-                        }
-
-                        if (oData.sessionId) {
-                            oModel.setProperty("/sessionId", oData.sessionId);
-                        }
-                    },
-                    onDone: function () {
-                        if (that._isExiting) {
-                            finalizeRequest();
-                            return;
-                        }
-
-                        if (sStreamError && !sFullContent) {
-                            oModel.setProperty("/showFixButton", false);
-                            oModel.setProperty("/errorMessage", "");
-                            finalizeRequest();
-                            return;
-                        }
-
-                        that._processAIResponse(sFullContent, bIsFixRequest);
-                        finalizeRequest();
-                    },
-                    onError: function (error) {
-                        console.error("[Diagram] 流读取错误:", error);
-                        if (!that._isExiting) {
-                            MessageToast.show(that._getI18nText("connectionInterrupted"));
-                        }
-                        finalizeRequest();
+                        return;
                     }
-                });
+
+                    if (oData.text) {
+                        sFullContent += oData.text;
+                    }
+
+                    if (oData.sessionId) {
+                        oModel.setProperty("/sessionId", oData.sessionId);
+                    }
+                },
+                onDone: function () {
+                    if (that._isExiting) {
+                        finalizeRequest();
+                        return;
+                    }
+
+                    if (sStreamError && !sFullContent) {
+                        oModel.setProperty("/showFixButton", false);
+                        oModel.setProperty("/errorMessage", "");
+                        finalizeRequest();
+                        return;
+                    }
+
+                    that._processAIResponse(sFullContent, bIsFixRequest);
+                    finalizeRequest();
+                }
             }).catch(function (error) {
                 if (error && error.name === "AbortError") {
                     finalizeRequest();
@@ -446,7 +423,11 @@ sap.ui.define([
                 }
                 console.error("[Diagram] AI 调用错误:", error);
                 if (!that._isExiting) {
-                    MessageToast.show(that._getI18nText("aiServiceUnavailable"));
+                    if (sFullContent) {
+                        MessageToast.show(that._getI18nText("connectionInterrupted"));
+                    } else {
+                        MessageToast.show((error && error.message) ? error.message : that._getI18nText("aiServiceUnavailable"));
+                    }
                 }
                 finalizeRequest();
             });

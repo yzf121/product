@@ -17,12 +17,14 @@ target/
 *_mta_build_tmp
 *.mtar
 mta_archives/
+resources/
 
 # Other
 .DS_Store
 *.orig
 *.log
 .env
+app/ai-chat-gui/webapp/config/ai-config.js
 
 *.iml
 *.flattened-pom.xml

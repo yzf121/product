@@ -1,147 +1,97 @@
 _schema-version: 3.3.0
 ID: abap-clean-core-ai-fiori-new
-description: AI 助手平台 - 基于阿里云百炼的 ABAP Clean Core Helper
+description: AI assistant platform - frontend-only UI5 app for BTP Work Zone
 version: 1.4.3
+
 modules:
-# 后端服务模块
-- name: abap-clean-core-ai-fiori-new-srv
-  type: nodejs
-  path: gen/srv
-  requires:
-  - name: abap-clean-core-ai-fiori-new-auth
-  provides:
-  - name: srv-api
-    properties:
-      srv-url: http://${routes/0/route}
-  parameters:
-    buildpack: nodejs_buildpack
-    instances: 1
-    memory: 256M
-    routes:
-    - route: abap-clean-core-ai-fiori-new-srv.apps.internal
-  build-parameters:
-    builder: npm
+  - name: comaiassistantaichatapp
+    type: html5
+    path: app/ai-chat-gui
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build:cf
+      supported-platforms: []
 
-# HTML5 应用部署模块
-- name: abap-clean-core-ai-fiori-new-app-deployer
-  type: com.sap.application.content
-  path: gen
-  requires:
-  - name: abap-clean-core-ai-fiori-new-html5-repo-host
-    parameters:
-      content-target: true
-  build-parameters:
-    build-result: app/
+  - name: abap-clean-core-ai-fiori-new-app-content
+    type: com.sap.application.content
+    path: .
     requires:
-    - artifacts:
-      - comaiassistantaichatapp.zip
-      name: comaiassistantaichatapp
-      target-path: app/
+      - name: abap-clean-core-ai-fiori-new-html5-repo-host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources
+      requires:
+        - name: comaiassistantaichatapp
+          artifacts:
+            - comaiassistantaichatapp.zip
+          target-path: resources/
 
-# HTML5 前端模块
-- name: comaiassistantaichatapp
-  type: html5
-  path: app/ai-chat-gui
-  build-parameters:
-    build-result: dist
-    builder: custom
-    commands:
-    - npm install
-    - npm run build:cf
-    supported-platforms: []
-
-# Destination Content 配置（用于 Work Zone 访问入口）
-- name: abap-clean-core-ai-fiori-new-destination-content
-  type: com.sap.application.content
-  requires:
-  - name: abap-clean-core-ai-fiori-new-destination
+  - name: abap-clean-core-ai-fiori-new-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: abap-clean-core-ai-fiori-new-destination
+        parameters:
+          content-target: true
+      - name: abap-clean-core-ai-fiori-new-html5-repo-host
+        parameters:
+          service-key:
+            name: abap-clean-core-ai-fiori-new-html5-repo-host-key
+      - name: abap-clean-core-ai-fiori-new-auth
+        parameters:
+          service-key:
+            name: abap-clean-core-ai-fiori-new-auth-key
     parameters:
-      content-target: true
-  - name: abap-clean-core-ai-fiori-new-html5-repo-host
-    parameters:
-      service-key:
-        name: abap-clean-core-ai-fiori-new-html5-repo-host-key
-  - name: abap-clean-core-ai-fiori-new-auth
-    parameters:
-      service-key:
-        name: abap-clean-core-ai-fiori-new-auth-key
-  - name: srv-api
-  parameters:
-    content:
-      instance:
-        destinations:
-        - Name: abap-clean-core-ai-fiori-new-html5-repo-host
-          ServiceInstanceName: abap-clean-core-ai-fiori-new-html5-repo-host
-          ServiceKeyName: abap-clean-core-ai-fiori-new-html5-repo-host-key
-          sap.cloud.service: abap-clean-core-ai-fiori-new
-        - Name: abap-clean-core-ai-fiori-new-auth
-          Authentication: OAuth2UserTokenExchange
-          ServiceInstanceName: abap-clean-core-ai-fiori-new-auth
-          ServiceKeyName: abap-clean-core-ai-fiori-new-auth-key
-          sap.cloud.service: abap-clean-core-ai-fiori-new
-        - Name: srv-api
-          Authentication: OAuth2UserTokenExchange
-          ProxyType: Internet
-          Type: HTTP
-          URL: ~{srv-api/srv-url}
-          HTML5.ForwardAuthToken: true
-          HTML5.DynamicDestination: true
-          sap.cloud.service: abap-clean-core-ai-fiori-new
-        existing_destinations_policy: update
-  build-parameters:
-    no-source: true
+      content:
+        instance:
+          existing_destinations_policy: update
+          destinations:
+            - Name: abap-clean-core-ai-fiori-new-html5-repo-host
+              ServiceInstanceName: abap-clean-core-ai-fiori-new-html5-repo-host
+              ServiceKeyName: abap-clean-core-ai-fiori-new-html5-repo-host-key
+              sap.cloud.service: abap-clean-core-ai-fiori-new
+            - Name: abap-clean-core-ai-fiori-new-auth
+              Authentication: OAuth2UserTokenExchange
+              ServiceInstanceName: abap-clean-core-ai-fiori-new-auth
+              ServiceKeyName: abap-clean-core-ai-fiori-new-auth-key
+              sap.cloud.service: abap-clean-core-ai-fiori-new
+    build-parameters:
+      no-source: true
 
 resources:
-# XSUAA 认证服务
-- name: abap-clean-core-ai-fiori-new-auth
-  type: org.cloudfoundry.managed-service
-  parameters:
-    path: ./xs-security.json
-    service: xsuaa
-    service-plan: application
+  - name: abap-clean-core-ai-fiori-new-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      path: ./xs-security.json
+      service: xsuaa
+      service-plan: application
 
-# Destination 服务实例
-- name: abap-clean-core-ai-fiori-new-destination
-  type: org.cloudfoundry.managed-service
-  requires:
-  - name: srv-api
-  parameters:
-    config:
-      HTML5Runtime_enabled: true
-      init_data:
-        instance:
-          destinations:
-          - Authentication: NoAuthentication
-            Name: ui5
-            ProxyType: Internet
-            Type: HTTP
-            URL: https://ui5.sap.com
-          - Authentication: OAuth2UserTokenExchange
-            Name: srv-api
-            ProxyType: Internet
-            Type: HTTP
-            URL: ~{srv-api/srv-url}
-            HTML5.ForwardAuthToken: true
-            HTML5.DynamicDestination: true
-            sap.cloud.service: abap-clean-core-ai-fiori-new
-          existing_destinations_policy: update
-    service: destination
-    service-plan: lite
+  - name: abap-clean-core-ai-fiori-new-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+      config:
+        HTML5Runtime_enabled: true
+        init_data:
+          instance:
+            existing_destinations_policy: update
+            destinations:
+              - Name: ui5
+                Authentication: NoAuthentication
+                ProxyType: Internet
+                Type: HTTP
+                URL: https://ui5.sap.com
 
-# HTML5 应用仓库
-- name: abap-clean-core-ai-fiori-new-html5-repo-host
-  type: org.cloudfoundry.managed-service
-  parameters:
-    service: html5-apps-repo
-    service-plan: app-host
+  - name: abap-clean-core-ai-fiori-new-html5-repo-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
 
 parameters:
   deploy_mode: html5-repo
   enable-parallel-deployments: true
-
-build-parameters:
-  before-all:
-  - builder: custom
-    commands:
-    - npm install
-    - npx cds build --production

@@ -2,8 +2,9 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "com/ai/assistant/aichatapp/util/Utils"
-], function (Controller, MessageBox, MessageToast, Utils) {
+    "com/ai/assistant/aichatapp/util/Utils",
+    "com/ai/assistant/aichatapp/util/AIClient"
+], function (Controller, MessageBox, MessageToast, Utils, AIClient) {
     "use strict";
 
     var FILE_UPLOAD_CONFIG = {
@@ -970,89 +971,55 @@ sap.ui.define([
                 }
             };
 
-            fetch("/api/chat/stream", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(oRequestBody),
-                signal: oAbortController.signal
-            }).then(function (response) {
-                if (!response.ok) {
-                    return response.text().then(function (sRawError) {
-                        var sBackendError = that._extractBackendErrorMessage(sRawError, oI18n.getText("networkError"));
-                        throw new Error(sBackendError);
-                    });
-                }
-
-                if (!response.body) {
-                    throw new Error(oI18n.getText("streamNotSupported"));
-                }
-
-                return Utils.parseSSEStream(response, {
-                    onData: function (oData) {
-                        if (oData.error) {
-                            if (!sStreamError) {
-                                sStreamError = oData.error;
-                                MessageToast.show(sStreamError);
-                            }
-                            return;
+            AIClient.streamChat(oRequestBody, {
+                signal: oAbortController.signal,
+                onData: function (oData) {
+                    if (oData.error) {
+                        if (!sStreamError) {
+                            sStreamError = oData.error;
+                            MessageToast.show(sStreamError);
                         }
-
-                        if (oData.text) {
-                            sFullContent += oData.text;
-                            var nNow = Date.now();
-                            if (!that._isExiting && (nNow - nLastRenderAt >= RENDER_THROTTLE_MS)) {
-                                that._updateAIMessageContent(sMessageId, sFullContent, false);
-                                that._scrollToBottom();
-                                nLastRenderAt = nNow;
-                            }
-                        }
-
-                        if (oData.sessionId && oCurrentConv && !oCurrentConv._sessionIdSaved) {
-                            var iIndex = aConversations.findIndex(function (c) {
-                                return c.id === oCurrentConv.id;
-                            });
-                            if (iIndex >= 0) {
-                                aConversations[iIndex].sessionId = oData.sessionId;
-                                oCurrentConv._sessionIdSaved = true;
-                                oModel.setProperty("/conversations", aConversations);
-                                that._syncToAllConversations(aConversations);
-                            }
-                        }
-                    },
-                    onDone: function () {
-                        if (that._isExiting) {
-                            finalizeRequest();
-                            return;
-                        }
-
-                        if (sStreamError && !sFullContent) {
-                            removeAssistantPlaceholder();
-                            finalizeRequest();
-                            return;
-                        }
-
-                        that._updateAIMessageContent(sMessageId, sFullContent, true);
-                        that._finalizeAIMessage(sMessageId, sFullContent);
-                        finalizeRequest();
-                    },
-                    onError: function (streamError) {
-                        console.error("流读取错误:", streamError);
-                        if (that._isExiting) {
-                            finalizeRequest();
-                            return;
-                        }
-                        if (sFullContent) {
-                            that._updateAIMessageContent(sMessageId, sFullContent, true);
-                            that._finalizeAIMessage(sMessageId, sFullContent);
-                        } else {
-                            removeAssistantPlaceholder();
-                        }
-                        finalizeRequest();
-                        MessageToast.show(oI18n.getText("connectionInterrupted"));
+                        return;
                     }
-                });
+
+                    if (oData.text) {
+                        sFullContent += oData.text;
+                        var nNow = Date.now();
+                        if (!that._isExiting && (nNow - nLastRenderAt >= RENDER_THROTTLE_MS)) {
+                            that._updateAIMessageContent(sMessageId, sFullContent, false);
+                            that._scrollToBottom();
+                            nLastRenderAt = nNow;
+                        }
+                    }
+
+                    if (oData.sessionId && oCurrentConv && !oCurrentConv._sessionIdSaved) {
+                        var iIndex = aConversations.findIndex(function (c) {
+                            return c.id === oCurrentConv.id;
+                        });
+                        if (iIndex >= 0) {
+                            aConversations[iIndex].sessionId = oData.sessionId;
+                            oCurrentConv._sessionIdSaved = true;
+                            oModel.setProperty("/conversations", aConversations);
+                            that._syncToAllConversations(aConversations);
+                        }
+                    }
+                },
+                onDone: function () {
+                    if (that._isExiting) {
+                        finalizeRequest();
+                        return;
+                    }
+
+                    if (sStreamError && !sFullContent) {
+                        removeAssistantPlaceholder();
+                        finalizeRequest();
+                        return;
+                    }
+
+                    that._updateAIMessageContent(sMessageId, sFullContent, true);
+                    that._finalizeAIMessage(sMessageId, sFullContent);
+                    finalizeRequest();
+                }
             }).catch(function (error) {
                 if (error && error.name === "AbortError") {
                     finalizeRequest();
@@ -1067,7 +1034,14 @@ sap.ui.define([
                 if (that._isExiting) {
                     return;
                 }
-                removeAssistantPlaceholder();
+
+                if (sFullContent) {
+                    that._updateAIMessageContent(sMessageId, sFullContent, true);
+                    that._finalizeAIMessage(sMessageId, sFullContent);
+                    MessageToast.show(oI18n.getText("connectionInterrupted"));
+                } else {
+                    removeAssistantPlaceholder();
+                }
             });
         },
 
@@ -1602,30 +1576,6 @@ sap.ui.define([
 
             var sTrimmedContext = sSafeContext.length > nAvailableContext ? sSafeContext.slice(0, nAvailableContext) : sSafeContext;
             return sPrefix + sTrimmedContext + sMiddle + sSafeMessage;
-        },
-
-        _extractBackendErrorMessage: function (sRawError, sFallback) {
-            var sDefaultText = sFallback || "请求失败，请稍后重试";
-            if (!sRawError) {
-                return sDefaultText;
-            }
-
-            var sRawText = String(sRawError).trim();
-            if (!sRawText) {
-                return sDefaultText;
-            }
-
-            try {
-                var oPayload = JSON.parse(sRawText);
-                var sPayloadError = oPayload && typeof oPayload.error === "string" ? oPayload.error.trim() : "";
-                if (sPayloadError) {
-                    return sPayloadError;
-                }
-            } catch {
-                // 忽略解析错误，回退为纯文本
-            }
-
-            return sRawText;
         },
 
         _shouldUseSessionId: function (sSessionId, oSessionInfo) {

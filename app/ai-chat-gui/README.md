@@ -1,60 +1,49 @@
-# ai-chat-gui（UI5 前端模块）
+# ai-chat-gui(UI5 Frontend-Only)
 
-本模块是项目的 UI5 Freestyle 前端，负责：
+????????????:
 
-- 首页助手入口（Home）
-- 多助手聊天界面（Main）
-- Diagram Helper（Mermaid 生成/编辑/导出）
-- 本地附件解析与对话上下文拼接
+- ??? `/api/*` ????
+- ???????? DashScope Apps API
+- API Key / App ID ?? `webapp/config/ai-config.js` ???
 
-## 目录说明
+## ????
 
 ```text
 webapp/
-  controller/      App/Home/Main/Diagram 控制器
-  view/            XML 视图
-  i18n/            多语言资源
-  lib/             本地第三方库（marked/highlight/mermaid）
-  util/Utils.js    通用工具（SSE 解析、复制、转义）
-xs-app.json        HTML5 Runtime 路由规则
-ui5.yaml           本地预览配置
-ui5-deploy.yaml    Cloud Foundry 构建打包配置
+  controller/      App/Home/Main/Diagram
+  view/            XML ??
+  i18n/            ?????
+  lib/             ???(marked/highlight/mermaid)
+  util/            ????? AI ???
+  config/          ??? AI ????
+xs-app.json        HTML5 Runtime ??
+ui5.yaml           ??????
+ui5-deploy.yaml    CF ??????
 ```
 
-## 本地开发
+## ????
 
-在仓库根目录执行：
+1. ????:
 
 ```bash
+cp webapp/config/ai-config.template.js webapp/config/ai-config.js
+```
+
+2. ??:
+
+- `defaultApiKey`
+- `defaultAppId`
+- ?? `assistantAppIds` / `assistantApiKeys`
+
+## ????
+
+```bash
+npm install
 npm run dev
 ```
 
-直接执行前端构建：
+## ??
 
 ```bash
-cd app/ai-chat-gui
-npm install
 npm run build
 ```
-
-## 前端路由
-
-- `""` -> `Home.view.xml`
-- `"chat/{aiType}"` -> `Main.view.xml`
-- `"diagram"` -> `Diagram.view.xml`
-
-## 与后端交互
-
-- 主要接口：`POST /api/chat/stream`（SSE）
-- 备用接口：`POST /api/chat/sendMessage`
-- `aiType` 决定后端选择的 DashScope App ID / Key
-
-## 附件解析能力（当前）
-
-已实现解析（且文件选择器已与能力对齐）：`txt/md/json/csv/xml/pdf/docx/xlsx/xls`。
-
-## 部署相关
-
-- `ui5-deploy.yaml` 使用 `ui5-task-zipper` 产出 `comaiassistantaichatapp.zip`
-- `xs-app.json` 约定 `/api/*` 转发到 destination `srv-api`
-- 其余静态资源由 `html5-apps-repo-rt` 提供

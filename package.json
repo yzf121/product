@@ -1,29 +1,21 @@
 {
   "name": "abap-clean-core-ai-fiori-new",
   "version": "1.4.3",
-  "description": "AI 助手平台 - 基于阿里云百炼的 ABAP Clean Core Helper",
+  "description": "AI assistant platform - frontend-only UI5 app",
   "engines": {
     "node": ">=18.0.0"
   },
-  "dependencies": {
-    "@sap/cds": "^9",
-    "@sap/xssec": "^4",
-    "dotenv": "^16.3.1",
-    "express": "^4"
-  },
   "devDependencies": {
-    "@cap-js/sqlite": "^2.1.2",
-    "@sap/cds-dk": "^9",
-    "cds-plugin-ui5": "^0.13.0",
+    "eslint": "^9.39.1",
     "mbt": "^1.2.29",
     "rimraf": "^5.0.5"
   },
   "scripts": {
-    "start": "cds-serve",
-    "dev": "cds watch --open ai-chat-gui/webapp/index.html?sap-ui-xx-viewCache=false",
-    "watch-ai-chat-gui": "cds watch --open ai-chat-gui/webapp/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "start": "npm --workspace app/ai-chat-gui run start",
+    "dev": "npm --workspace app/ai-chat-gui run dev",
+    "watch-ai-chat-gui": "npm --workspace app/ai-chat-gui run dev",
     "doctor": "node scripts/doctor.js",
-    "lint": "npx eslint srv app/ai-chat-gui/webapp/controller app/ai-chat-gui/webapp/util app/ai-chat-gui/webapp/Component.js --max-warnings=0",
+    "lint": "npx eslint app/ai-chat-gui/webapp/controller app/ai-chat-gui/webapp/util app/ai-chat-gui/webapp/Component.js --max-warnings=0",
     "verify": "node scripts/verify.js",
     "undeploy": "cf undeploy abap-clean-core-ai-fiori-new --delete-services --delete-service-keys --delete-service-brokers",
     "build:mta": "node scripts/build-mta.js build --mtar archive",
@@ -31,16 +23,6 @@
     "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
   },
   "private": true,
-  "cds": {
-    "requires": {
-      "[production]": {
-        "auth": "xsuaa",
-        "db": false
-      },
-      "destinations": true,
-      "html5-repo": true
-    }
-  },
   "workspaces": [
     "app/*"
   ]
