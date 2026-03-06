@@ -34,9 +34,17 @@
                     </Bar>
                 </customHeader>
                 <content>
+                    <SearchField
+                        id="conversationSearchField"
+                        value="{chat>/conversationSearchQuery}"
+                        liveChange="onConversationSearch"
+                        search="onConversationSearch"
+                        width="100%"
+                        class="conversationSearchField"
+                        placeholder="{i18n>searchConversationPlaceholder}"/>
                     <List
                         id="conversationList"
-                        items="{chat>/conversations}"
+                        items="{chat>/visibleConversations}"
                         mode="SingleSelectMaster"
                         selectionChange="onConversationSelect"
                         noDataText="{i18n>noConversations}">
@@ -52,15 +60,27 @@
                                     <layoutData>
                                         <FlexItemData growFactor="1" shrinkFactor="1"/>
                                     </layoutData>
-                                    <Text
-                                        text="{chat>title}"
-                                        maxLines="1"
-                                        class="conversationTitle"/>
+                                    <HBox alignItems="Center" class="conversationTitleRow" renderType="Bare">
+                                        <Text
+                                            text="{chat>title}"
+                                            maxLines="1"
+                                            class="conversationTitle"/>
+                                        <core:Icon
+                                            src="sap-icon://favorite"
+                                            visible="{chat>isPinned}"
+                                            class="conversationPinnedIcon"/>
+                                    </HBox>
                                     <Text
                                         text="{chat>lastUpdate}"
                                         class="conversationDate sapUiTinyMarginTop"/>
                                 </VBox>
                                 <HBox class="conversationActions" alignItems="Center">
+                                    <Button
+                                        icon="{= ${chat>isPinned} ? 'sap-icon://favorite' : 'sap-icon://unfavorite' }"
+                                        type="Transparent"
+                                        press="onToggleConversationPin"
+                                        tooltip="{= ${chat>isPinned} ? ${i18n>unpinConversation} : ${i18n>pinConversation} }"
+                                        class="conversationActionBtn"/>
                                     <Button
                                         icon="sap-icon://edit"
                                         type="Transparent"
@@ -149,7 +169,7 @@
                             <layoutData>
                                 <FlexItemData growFactor="0" shrinkFactor="0"/>
                             </layoutData>
-                            <HBox class="inputAreaGlass" width="100%" alignItems="Center" justifyContent="SpaceBetween">
+                            <HBox id="inputAreaGlass" class="inputAreaGlass" width="100%" alignItems="Center" justifyContent="SpaceBetween">
                                 <!-- 文件上传按钮 -->
                                 <Button
                                     id="uploadButton"
@@ -160,7 +180,7 @@
                                     tooltip="{i18n>uploadFile}"
                                     enabled="{= !${chat>/isLoading}}"/>
                                 <!-- 隐藏的文件输入 -->
-                                <core:HTML id="fileInputContainer" content="&lt;input type='file' id='hiddenFileInput' style='display:none' accept='.pdf,.docx,.txt,.md,.json,.xml,.csv,.xlsx,.xls'/&gt;"/>
+                                <core:HTML id="fileInputContainer" content="&lt;input type='file' id='hiddenFileInput' style='display:none' accept='.pdf,.docx,.txt,.md,.json,.xml,.csv,.xlsx,.xls' multiple='multiple'/&gt;"/>
                                 <TextArea
                                     id="messageInput"
                                     value="{chat>/inputValue}"

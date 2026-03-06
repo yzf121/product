@@ -1,5 +1,3 @@
-import cds from "@sap/cds/eslint.config.mjs";
-
 const browserGlobals = {
     window: "readonly",
     document: "readonly",
@@ -25,16 +23,13 @@ const browserGlobals = {
 
 const nodeGlobals = {
     process: "readonly",
-    fetch: "readonly",
-    AbortController: "readonly",
-    TextDecoder: "readonly",
-    setTimeout: "readonly",
-    clearTimeout: "readonly",
-    console: "readonly"
+    console: "readonly",
+    __dirname: "readonly",
+    module: "readonly",
+    require: "readonly"
 };
 
 export default [
-    ...cds.recommended,
     {
         ignores: [
             "app/ai-chat-gui/dist/**",
@@ -46,6 +41,8 @@ export default [
     {
         files: ["app/ai-chat-gui/webapp/**/*.js"],
         languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "script",
             globals: browserGlobals
         },
         rules: {
@@ -53,8 +50,10 @@ export default [
         }
     },
     {
-        files: ["srv/**/*.js"],
+        files: ["scripts/**/*.js"],
         languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "commonjs",
             globals: nodeGlobals
         },
         rules: {

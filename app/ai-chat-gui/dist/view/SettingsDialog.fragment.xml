@@ -1,0 +1,64 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+    <Dialog
+        id="settingsDialog"
+        title="{i18n>settingsDialogTitle}"
+        contentWidth="42rem"
+        contentHeight="38rem"
+        stretchOnPhone="true"
+        resizable="true"
+        draggable="true">
+        <content>
+            <ScrollContainer width="100%" height="100%" vertical="true">
+                <VBox class="sapUiMediumMargin">
+                    <MessageStrip
+                        text="{settings>/statusText}"
+                        type="{settings>/statusType}"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom" />
+                    <Text text="{i18n>settingsConfigHint}" wrapping="true" class="sapUiSmallMarginBottom" />
+                    <Label text="{i18n>settingsSource}" />
+                    <Text text="{settings>/sourceText}" wrapping="true" class="sapUiTinyMarginBottom" />
+
+                    <Title text="{i18n>settingsConfigTitle}" level="H4" class="sapUiSmallMarginTop sapUiTinyMarginBottom" />
+                    <Label text="{i18n>settingsEndpoint}" />
+                    <Input value="{settings>/endpoint}" />
+
+                    <Label text="{i18n>settingsTimeoutMs}" class="sapUiTinyMarginTop" />
+                    <Input value="{settings>/timeoutMs}" type="Number" />
+
+                    <Label text="{i18n>settingsDefaultAppId}" class="sapUiTinyMarginTop" />
+                    <Input value="{settings>/defaultAppId}" />
+
+                    <Label text="{i18n>settingsDefaultApiKey}" class="sapUiTinyMarginTop" />
+                    <Input value="{settings>/defaultApiKey}" type="Password" />
+
+                    <Label text="{i18n>settingsAssistantAppIds}" class="sapUiTinyMarginTop" />
+                    <TextArea value="{settings>/appIdsJson}" rows="10" growing="true" growingMaxLines="16" />
+
+                    <Label text="{i18n>settingsAssistantApiKeys}" class="sapUiTinyMarginTop" />
+                    <TextArea value="{settings>/apiKeysJson}" rows="8" growing="true" growingMaxLines="14" />
+
+                    <Text text="{i18n>settingsJsonHint}" wrapping="true" class="sapUiSmallMarginTop" />
+
+                    <Title text="{i18n>aboutTitle}" level="H4" class="sapUiMediumMarginTop sapUiTinyMarginBottom" />
+                    <Text text="{i18n>aboutMessage}" wrapping="true" />
+                </VBox>
+            </ScrollContainer>
+        </content>
+        <beginButton>
+            <Button text="{i18n>saveSettings}" type="Emphasized" press="onSaveSettings" />
+        </beginButton>
+        <buttons>
+            <Button
+                text="{i18n>resetLocalOverrides}"
+                type="Transparent"
+                enabled="{settings>/hasUserOverride}"
+                press="onResetSettingsOverrides" />
+        </buttons>
+        <endButton>
+            <Button text="{i18n>closeDrawio}" press="onCloseSettingsDialog" />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

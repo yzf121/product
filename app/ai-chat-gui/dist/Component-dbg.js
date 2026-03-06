@@ -45,6 +45,9 @@ sap.ui.define([
                             if (!Array.isArray(conv.attachments)) {
                                 conv.attachments = [];
                             }
+                            if (typeof conv.isPinned !== "boolean") {
+                                conv.isPinned = false;
+                            }
                             return conv;
                         });
                         // 保存到全局对话列表

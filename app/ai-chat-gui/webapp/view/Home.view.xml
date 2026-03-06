@@ -29,6 +29,13 @@
         </customHeader>
         
         <content>
+            <MessageStrip
+                text="{settings>/statusText}"
+                type="{settings>/statusType}"
+                visible="{settings>/statusVisible}"
+                showIcon="true"
+                showCloseButton="false"
+                class="sapUiMediumMarginBegin sapUiMediumMarginEnd sapUiMediumMarginTop"/>
             <!-- 欢迎区域 -->
             <VBox class="sapUiMediumMargin welcomeSection" alignItems="Center">
                 <Title text="{i18n>welcomeHomeTitle}" level="H1" class="sapUiSmallMarginBottom"/>

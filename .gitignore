@@ -23,6 +23,7 @@ mta_archives/
 *.orig
 *.log
 .env
+app/ai-chat-gui/webapp/config/ai-config.js
 
 *.iml
 *.flattened-pom.xml

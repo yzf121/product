@@ -2,8 +2,9 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "com/ai/assistant/aichatapp/util/Utils"
-], function (Controller, MessageBox, MessageToast, Utils) {
+    "com/ai/assistant/aichatapp/util/Utils",
+    "com/ai/assistant/aichatapp/service/DashScopeClient"
+], function (Controller, MessageBox, MessageToast, Utils, DashScopeClient) {
     "use strict";
 
     var FILE_UPLOAD_CONFIG = {
@@ -41,10 +42,18 @@ sap.ui.define([
             this._isExiting = false;
             this._pendingTimeouts = new Set();
             this._oActiveStreamController = null;
+            this._oPendingResubmitPayload = null;
+            this._bEditLastUserDialogOpen = false;
             this._fnMessageInputKeydown = null;
             this._oBoundTextAreaElement = null;
             this._fnFileInputChange = null;
             this._oBoundFileInput = null;
+            this._oUploadDropZoneDomRef = null;
+            this._fnUploadDragEnter = null;
+            this._fnUploadDragOver = null;
+            this._fnUploadDragLeave = null;
+            this._fnUploadDrop = null;
+            this._nUploadDragEnterCounter = 0;
             this._bSidebarWidthCustomized = false;
             this._fnSidebarPointerDown = null;
             this._oSidebarDomRef = null;
@@ -68,6 +77,7 @@ sap.ui.define([
         onAfterRendering: function () {
             this._bindKeyboardShortcut();
             this._bindFileInputChange();
+            this._bindDragAndDropUpload();
             this._renderAttachmentsFromModel();
             this._syncWelcomeBoxAfterRender();
             this._bindSidebarResizeIntent();
@@ -128,6 +138,10 @@ sap.ui.define([
                 oModel.setProperty("/attachments", []);
             }
 
+            if (!oModel.getProperty("/conversationSearchQuery")) {
+                oModel.setProperty("/conversationSearchQuery", "");
+            }
+
             oModel.setProperty("/currentAiType", sAiType);
 
             var sTitleKey = this._getAiTitleKey(sAiType);
@@ -140,6 +154,7 @@ sap.ui.define([
 
             if (sPreviousAiType && sPreviousAiType !== sAiType) {
                 this._resetCurrentConversation();
+                oModel.setProperty("/conversationSearchQuery", "");
             }
 
             this._filterConversationsByAiType(sAiType);
@@ -150,6 +165,7 @@ sap.ui.define([
 
             oModel.setProperty("/currentConversationId", null);
             oModel.setProperty("/messages", []);
+            this._oPendingResubmitPayload = null;
             this._setAttachmentsForConversation(null);
 
             this._clearMessageContainer();
@@ -160,11 +176,165 @@ sap.ui.define([
             var oModel = this.getView().getModel("chat");
             var aAllConversations = this.getOwnerComponent()._aAllConversations || [];
 
+            aAllConversations.forEach(function (oConversation) {
+                this._normalizeConversation(oConversation);
+            }.bind(this));
+
             var aFilteredConversations = aAllConversations.filter(function (conv) {
                 return conv.aiType === sAiType;
             });
 
-            oModel.setProperty("/conversations", aFilteredConversations);
+            oModel.setProperty("/conversations", this._sortConversations(aFilteredConversations));
+            this._applyConversationSearchFilter();
+        },
+
+        _normalizeConversation: function (oConversation) {
+            if (!oConversation) {
+                return;
+            }
+            if (!Array.isArray(oConversation.messages)) {
+                oConversation.messages = [];
+            }
+            if (!Array.isArray(oConversation.attachments)) {
+                oConversation.attachments = [];
+            }
+            if (typeof oConversation.isPinned !== "boolean") {
+                oConversation.isPinned = false;
+            }
+        },
+
+        _sortConversations: function (aConversations) {
+            var that = this;
+            return (aConversations || []).slice().sort(function (a, b) {
+                var nPinnedDiff = (b && b.isPinned ? 1 : 0) - (a && a.isPinned ? 1 : 0);
+                if (nPinnedDiff !== 0) {
+                    return nPinnedDiff;
+                }
+
+                var nTimeA = that._getConversationSortTimestamp(a);
+                var nTimeB = that._getConversationSortTimestamp(b);
+                if (nTimeB !== nTimeA) {
+                    return nTimeB - nTimeA;
+                }
+
+                var sTitleA = (a && a.title ? a.title : "").toLowerCase();
+                var sTitleB = (b && b.title ? b.title : "").toLowerCase();
+                return sTitleA.localeCompare(sTitleB);
+            });
+        },
+
+        _getConversationSortTimestamp: function (oConversation) {
+            if (!oConversation) {
+                return 0;
+            }
+
+            if (oConversation.updatedAt) {
+                var nUpdatedTime = new Date(oConversation.updatedAt).getTime();
+                if (!isNaN(nUpdatedTime)) {
+                    return nUpdatedTime;
+                }
+            }
+
+            if (oConversation.lastUpdate) {
+                var sLastUpdate = String(oConversation.lastUpdate).replace(" ", "T");
+                var nLastUpdateTime = new Date(sLastUpdate).getTime();
+                if (!isNaN(nLastUpdateTime)) {
+                    return nLastUpdateTime;
+                }
+            }
+
+            return 0;
+        },
+
+        onConversationSearch: function (oEvent) {
+            var sQuery = oEvent.getParameter("newValue");
+            if (sQuery === undefined) {
+                sQuery = oEvent.getParameter("query");
+            }
+            var oModel = this.getView().getModel("chat");
+            oModel.setProperty("/conversationSearchQuery", sQuery || "");
+            this._applyConversationSearchFilter();
+        },
+
+        _applyConversationSearchFilter: function () {
+            var oModel = this.getView().getModel("chat");
+            var aConversations = oModel.getProperty("/conversations") || [];
+            var sQuery = oModel.getProperty("/conversationSearchQuery") || "";
+            var that = this;
+
+            var aVisibleConversations = aConversations.filter(function (oConversation) {
+                return that._matchConversationByQuery(oConversation, sQuery);
+            });
+
+            oModel.setProperty("/visibleConversations", aVisibleConversations);
+
+            this._setManagedTimeout(function () {
+                that._restoreConversationSelection();
+            }, 0);
+        },
+
+        _matchConversationByQuery: function (oConversation, sQuery) {
+            var sNormalizedQuery = this._normalizeSearchText(sQuery);
+            if (!sNormalizedQuery) {
+                return true;
+            }
+
+            var sTitle = this._normalizeSearchText(oConversation && oConversation.title ? oConversation.title : "");
+            if (!sTitle) {
+                return false;
+            }
+
+            if (sTitle.indexOf(sNormalizedQuery) !== -1) {
+                return true;
+            }
+
+            var aTokens = sNormalizedQuery.split(" ").filter(function (sToken) {
+                return Boolean(sToken);
+            });
+
+            if (aTokens.length <= 1) {
+                return false;
+            }
+
+            return aTokens.every(function (sToken) {
+                return sTitle.indexOf(sToken) !== -1;
+            });
+        },
+
+        _normalizeSearchText: function (sText) {
+            return String(sText || "").toLowerCase().replace(/\s+/g, " ").trim();
+        },
+
+        _restoreConversationSelection: function () {
+            var oList = this.byId("conversationList");
+            if (!oList) {
+                return;
+            }
+
+            var oModel = this.getView().getModel("chat");
+            var sCurrentId = oModel.getProperty("/currentConversationId");
+            if (!sCurrentId) {
+                oList.removeSelections(true);
+                return;
+            }
+
+            var aItems = oList.getItems() || [];
+            var oTargetItem = null;
+
+            for (var i = 0; i < aItems.length; i++) {
+                var oContext = aItems[i].getBindingContext("chat");
+                var oConversation = oContext ? oContext.getObject() : null;
+                if (oConversation && oConversation.id === sCurrentId) {
+                    oTargetItem = aItems[i];
+                    break;
+                }
+            }
+
+            if (oTargetItem) {
+                oList.setSelectedItem(oTargetItem, true);
+            } else {
+                oList.removeSelections(true);
+            }
         },
 
         _updateWelcomeMessage: function (sAiType) {
@@ -390,9 +560,11 @@ sap.ui.define([
                 title: oI18n.getText("newConversation"),
                 messages: [],
                 lastUpdate: this._formatDate(new Date()),
+                updatedAt: new Date().toISOString(),
                 sessionId: null,
                 sessionInfo: null,  // 首次收到会话响应后再初始化
                 attachments: [],
+                isPinned: false,
                 aiType: sCurrentAiType  // 保留当前 AI 类型
             };
 
@@ -400,13 +572,13 @@ sap.ui.define([
             aAllConversations.unshift(oNewConversation);
             this.getOwnerComponent()._aAllConversations = aAllConversations;
 
-            var aFilteredConversations = oModel.getProperty("/conversations") || [];
-            aFilteredConversations.unshift(oNewConversation);
-            oModel.setProperty("/conversations", aFilteredConversations);
+            this._filterConversationsByAiType(sCurrentAiType);
 
             oModel.setProperty("/currentConversationId", oNewConversation.id);
             oModel.setProperty("/messages", []);
+            this._oPendingResubmitPayload = null;
             this._setAttachmentsForConversation(oNewConversation);
+            this._applyConversationSearchFilter();
 
             this._clearMessageContainer();
             this._showWelcomeBox();
@@ -440,6 +612,7 @@ sap.ui.define([
 
                 if (oFullConversation) {
                     oModel.setProperty("/currentConversationId", oFullConversation.id);
+                    this._oPendingResubmitPayload = null;
                     var aMessages = JSON.parse(JSON.stringify(oFullConversation.messages || []));
                     oModel.setProperty("/messages", aMessages);
                     this._setAttachmentsForConversation(oFullConversation);
@@ -493,6 +666,8 @@ sap.ui.define([
                                 if (sNewTitle.trim()) {
                                     var oModel = that.getView().getModel("chat");
                                     oModel.setProperty(sPath + "/title", sNewTitle.trim());
+                                    that._syncToAllConversations(oModel.getProperty("/conversations") || []);
+                                    that._applyConversationSearchFilter();
                                     that.getOwnerComponent().saveConversationsToStorage();
                                     MessageToast.show(oI18n.getText("titleUpdated"));
                                 }
@@ -516,6 +691,46 @@ sap.ui.define([
             }
         },
 
+        onToggleConversationPin: function (oEvent) {
+            if (oEvent && oEvent.preventDefault) {
+                oEvent.preventDefault();
+            }
+            if (oEvent && oEvent.stopPropagation) {
+                oEvent.stopPropagation();
+            }
+
+            var oSource = oEvent.getSource();
+            var oContext = oSource.getBindingContext("chat");
+            if (!oContext) {
+                return;
+            }
+
+            var oConversation = oContext.getObject();
+            var oModel = this.getView().getModel("chat");
+            var aConversations = oModel.getProperty("/conversations") || [];
+            var iConversationIndex = aConversations.findIndex(function (oItem) {
+                return oItem.id === oConversation.id;
+            });
+
+            if (iConversationIndex < 0) {
+                return;
+            }
+
+            aConversations[iConversationIndex].isPinned = !aConversations[iConversationIndex].isPinned;
+            oModel.setProperty("/conversations", this._sortConversations(aConversations));
+
+            this._syncToAllConversations(oModel.getProperty("/conversations") || []);
+            this._applyConversationSearchFilter();
+            this.getOwnerComponent().saveConversationsToStorage();
+
+            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+            MessageToast.show(
+                aConversations[iConversationIndex].isPinned
+                    ? oI18n.getText("conversationPinned")
+                    : oI18n.getText("conversationUnpinned")
+            );
+        },
+
         onDeleteConversation: function (oEvent) {
             var that = this;
             var oSource = oEvent.getSource();
@@ -530,24 +745,20 @@ sap.ui.define([
                     onClose: function (oAction) {
                         if (oAction === MessageBox.Action.OK) {
                             var oModel = that.getView().getModel("chat");
-                            var aConversations = oModel.getProperty("/conversations");
                             var sCurrentId = oModel.getProperty("/currentConversationId");
-
-                            aConversations = aConversations.filter(function (conv) {
-                                return conv.id !== oConversation.id;
-                            });
-
-                            oModel.setProperty("/conversations", aConversations);
+                            var sCurrentAiType = oModel.getProperty("/currentAiType");
 
                             var aAllConversations = that.getOwnerComponent()._aAllConversations || [];
                             aAllConversations = aAllConversations.filter(function (conv) {
                                 return conv.id !== oConversation.id;
                             });
                             that.getOwnerComponent()._aAllConversations = aAllConversations;
+                            that._filterConversationsByAiType(sCurrentAiType);
 
                             if (sCurrentId === oConversation.id) {
                                 oModel.setProperty("/currentConversationId", null);
                                 oModel.setProperty("/messages", []);
+                                that._oPendingResubmitPayload = null;
                                 that._setAttachmentsForConversation(null);
                                 that._clearMessageContainer();
                                 that._showWelcomeBox();
@@ -587,6 +798,10 @@ sap.ui.define([
 
             this._ensureCurrentConversation(true);
             var oSendAttachmentPayload = this._extractReadyAttachmentsForSend();
+            if (this._oPendingResubmitPayload) {
+                oSendAttachmentPayload = this._mergeAttachmentPayloads(oSendAttachmentPayload, this._oPendingResubmitPayload);
+                this._oPendingResubmitPayload = null;
+            }
 
             var oUserMessage = {
                 id: this._generateUUID(),
@@ -608,7 +823,8 @@ sap.ui.define([
 
             this._hideWelcomeBox();
 
-            this._renderUserMessage(oUserMessage);
+            this._clearRenderedLastUserEditAction();
+            this._renderUserMessage(oUserMessage, true);
 
             this._persistCurrentConversationState();
 
@@ -645,8 +861,11 @@ sap.ui.define([
 
             aConversations[iConvIndex].messages = JSON.parse(JSON.stringify(aMessages));
             aConversations[iConvIndex].lastUpdate = this._formatDate(new Date());
+            aConversations[iConvIndex].updatedAt = new Date().toISOString();
+            aConversations = this._sortConversations(aConversations);
             oModel.setProperty("/conversations", aConversations);
             this._syncToAllConversations(aConversations);
+            this._applyConversationSearchFilter();
             this.getOwnerComponent().saveConversationsToStorage();
         },
 
@@ -752,26 +971,8 @@ sap.ui.define([
                 }
             };
 
-            fetch("/api/chat/stream", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(oRequestBody),
-                signal: oAbortController.signal
-            }).then(function (response) {
-                if (!response.ok) {
-                    return response.text().then(function (sRawError) {
-                        var sBackendError = that._extractBackendErrorMessage(sRawError, oI18n.getText("networkError"));
-                        throw new Error(sBackendError);
-                    });
-                }
-
-                if (!response.body) {
-                    throw new Error(oI18n.getText("streamNotSupported"));
-                }
-
-                return Utils.parseSSEStream(response, {
+            DashScopeClient.streamChat(Object.assign({}, oRequestBody, {
+                signal: oAbortController.signal,
                     onData: function (oData) {
                         if (oData.error) {
                             if (!sStreamError) {
@@ -799,6 +1000,7 @@ sap.ui.define([
                                 aConversations[iIndex].sessionId = oData.sessionId;
                                 oCurrentConv._sessionIdSaved = true;
                                 oModel.setProperty("/conversations", aConversations);
+                                that._syncToAllConversations(aConversations);
                             }
                         }
                     },
@@ -833,8 +1035,7 @@ sap.ui.define([
                         finalizeRequest();
                         MessageToast.show(oI18n.getText("connectionInterrupted"));
                     }
-                });
-            }).catch(function (error) {
+            })).catch(function (error) {
                 if (error && error.name === "AbortError") {
                     finalizeRequest();
                     return;
@@ -852,19 +1053,31 @@ sap.ui.define([
             });
         },
 
-        _renderUserMessage: function (oMessage) {
+        _renderUserMessage: function (oMessage, bCanEditLastUserMessage) {
             var that = this;
             var oMessageList = this.byId("messageList");
             var oDomRef = oMessageList.getDomRef();
 
             if (!oDomRef) {
                 this._setManagedTimeout(function () {
-                    that._renderUserMessage(oMessage);
+                    that._renderUserMessage(oMessage, bCanEditLastUserMessage);
                 }, 100);
                 return;
             }
 
             var sAttachmentStripHtml = this._buildMessageAttachmentStripHtml(oMessage.attachments);
+            var sEditActionHtml = "";
+            if (bCanEditLastUserMessage) {
+                var oI18n = this.getView().getModel("i18n").getResourceBundle();
+                var sTooltip = Utils.escapeHtml(oI18n.getText("editAndResubmitTooltip"));
+                var sButtonText = Utils.escapeHtml(oI18n.getText("editAndResubmit"));
+                sEditActionHtml = '<div class="messageActionArea userMessageActionArea" id="user-actions-' + oMessage.id + '">' +
+                    '<button class="editLastUserMessageBtn" id="edit-user-msg-' + oMessage.id + '" title="' + sTooltip + '">' +
+                    '<span class="sapUiIcon" style="font-family: SAP-icons">&#xe038;</span>' +
+                    '<span>' + sButtonText + '</span>' +
+                    '</button>' +
+                    '</div>';
+            }
             var sHtml = '<div class="messageItem userMessage" id="user-msg-' + oMessage.id + '">' +
                 '<div class="avatarContainer">' +
                 '<img class="avatarImage userAvatarImg" src="images/user_avatar_1772638105594.png" alt="User Avatar">' +
@@ -872,10 +1085,152 @@ sap.ui.define([
                 '<div class="messageContent">' +
                 '<div class="messageText">' + Utils.escapeHtml(oMessage.content) + '</div>' +
                 sAttachmentStripHtml +
+                sEditActionHtml +
                 '</div>' +
                 '</div>';
 
             oDomRef.insertAdjacentHTML("beforeend", sHtml);
+
+            if (bCanEditLastUserMessage) {
+                var oEditButton = document.getElementById("edit-user-msg-" + oMessage.id);
+                if (oEditButton) {
+                    oEditButton.addEventListener("click", function () {
+                        that._onEditLastUserMessage(oMessage.id);
+                    });
+                }
+            }
+        },
+
+        _clearRenderedLastUserEditAction: function () {
+            var aActionContainers = document.querySelectorAll(".userMessageActionArea");
+            for (var i = 0; i < aActionContainers.length; i++) {
+                aActionContainers[i].remove();
+            }
+        },
+
+        _getLastUserMessageInfo: function (aMessages) {
+            var aSafeMessages = Array.isArray(aMessages) ? aMessages : [];
+            for (var i = aSafeMessages.length - 1; i >= 0; i--) {
+                if (aSafeMessages[i].role === "user") {
+                    return {
+                        index: i,
+                        message: aSafeMessages[i]
+                    };
+                }
+            }
+            return null;
+        },
+
+        _onEditLastUserMessage: function (sMessageId) {
+            var oModel = this.getView().getModel("chat");
+            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+
+            if (oModel.getProperty("/isLoading")) {
+                MessageToast.show(oI18n.getText("cannotEditDuringGeneration"));
+                return;
+            }
+
+            var aMessages = oModel.getProperty("/messages") || [];
+            var oLastUserInfo = this._getLastUserMessageInfo(aMessages);
+            if (!oLastUserInfo || !oLastUserInfo.message || oLastUserInfo.message.id !== sMessageId) {
+                MessageToast.show(oI18n.getText("onlyLatestUserMessageEditable"));
+                return;
+            }
+
+            this._openEditLastUserMessageDialog(oLastUserInfo);
+        },
+
+        _openEditLastUserMessageDialog: function (oLastUserInfo) {
+            if (this._bEditLastUserDialogOpen) {
+                return;
+            }
+
+            this._bEditLastUserDialogOpen = true;
+            var that = this;
+            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+
+            sap.ui.require(["sap/m/Dialog", "sap/m/TextArea", "sap/m/Button"], function (Dialog, TextArea, Button) {
+                var oInput = new TextArea({
+                    value: oLastUserInfo.message.content || "",
+                    width: "100%",
+                    rows: 6,
+                    growing: true,
+                    growingMaxLines: 10
+                });
+
+                var oDialog = new Dialog({
+                    title: oI18n.getText("editLastUserMessageTitle"),
+                    type: "Message",
+                    contentWidth: "36rem",
+                    content: [oInput],
+                    beginButton: new Button({
+                        text: oI18n.getText("resubmit"),
+                        type: "Emphasized",
+                        press: function () {
+                            var sEditedMessage = (oInput.getValue() || "").trim();
+                            if (!sEditedMessage) {
+                                MessageToast.show(oI18n.getText("messageCannotBeEmpty"));
+                                return;
+                            }
+
+                            that._resubmitEditedLastUserMessage(oLastUserInfo.message.id, sEditedMessage);
+                            oDialog.close();
+                        }
+                    }),
+                    endButton: new Button({
+                        text: oI18n.getText("cancel"),
+                        press: function () {
+                            oDialog.close();
+                        }
+                    }),
+                    afterClose: function () {
+                        oDialog.destroy();
+                        that._bEditLastUserDialogOpen = false;
+                    }
+                });
+
+                oDialog.open();
+            });
+        },
+
+        _resubmitEditedLastUserMessage: function (sOriginalMessageId, sEditedMessage) {
+            var oModel = this.getView().getModel("chat");
+            var aMessages = oModel.getProperty("/messages") || [];
+            var oLastUserInfo = this._getLastUserMessageInfo(aMessages);
+            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+
+            if (!oLastUserInfo || !oLastUserInfo.message || oLastUserInfo.message.id !== sOriginalMessageId) {
+                MessageToast.show(oI18n.getText("onlyLatestUserMessageEditable"));
+                return;
+            }
+
+            var oOriginalUserMessage = oLastUserInfo.message;
+            this._oPendingResubmitPayload = {
+                attachments: JSON.parse(JSON.stringify(oOriginalUserMessage.attachments || [])),
+                contextText: oOriginalUserMessage.attachmentContext || ""
+            };
+
+            var aRetainedMessages = aMessages.slice(0, oLastUserInfo.index);
+            oModel.setProperty("/messages", aRetainedMessages);
+            oModel.setProperty("/inputValue", sEditedMessage);
+
+            var oTextArea = this.byId("messageInput");
+            if (oTextArea) {
+                oTextArea.setValue(sEditedMessage);
+            }
+
+            this._renderMessages();
+            if (aRetainedMessages.length > 0) {
+                this._hideWelcomeBox();
+            } else {
+                this._showWelcomeBox();
+            }
+
+            this._persistCurrentConversationState();
+
+            this._setManagedTimeout(function () {
+                this.onSendMessage();
+            }.bind(this), 0);
         },
 
         _buildMessageAttachmentStripHtml: function (aAttachments) {
@@ -1022,6 +1377,7 @@ sap.ui.define([
             if (iConvIndex >= 0) {
                 aConversations[iConvIndex].messages = JSON.parse(JSON.stringify(aMessages));
                 aConversations[iConvIndex].lastUpdate = this._formatDate(new Date());
+                aConversations[iConvIndex].updatedAt = new Date().toISOString();
 
                 if (aConversations[iConvIndex].sessionId) {
                     if (!aConversations[iConvIndex].sessionInfo) {
@@ -1045,10 +1401,12 @@ sap.ui.define([
                 }
             }
 
+            aConversations = this._sortConversations(aConversations);
             oModel.setProperty("/conversations", aConversations);
             oModel.setProperty("/messages", aMessages);
 
             this._syncToAllConversations(aConversations);
+            this._applyConversationSearchFilter();
 
             this.getOwnerComponent().saveConversationsToStorage();
         },
@@ -1062,6 +1420,8 @@ sap.ui.define([
                 });
                 if (iIndex >= 0) {
                     aAllConversations[iIndex] = oConv;
+                } else {
+                    aAllConversations.push(oConv);
                 }
             });
 
@@ -1130,12 +1490,14 @@ sap.ui.define([
             var that = this;
             var oModel = this.getView().getModel("chat");
             var aMessages = oModel.getProperty("/messages") || [];
+            var oLastUserInfo = this._getLastUserMessageInfo(aMessages);
+            var sLastUserMessageId = oLastUserInfo && oLastUserInfo.message ? oLastUserInfo.message.id : null;
 
             this._clearMessageContainer();
 
             aMessages.forEach(function (oMessage) {
                 if (oMessage.role === "user") {
-                    that._renderUserMessage(oMessage);
+                    that._renderUserMessage(oMessage, oMessage.id === sLastUserMessageId);
                 } else if (oMessage.role === "assistant") {
                     that._renderAIMessageContainer(oMessage.id);
                     if (oMessage.content) {
@@ -1453,6 +1815,132 @@ sap.ui.define([
         /**
          * 点击上传按钮并触发原生文件选择框
          */
+        _bindDragAndDropUpload: function () {
+            var that = this;
+
+            this._setManagedTimeout(function () {
+                var oDropZone = that.byId("inputAreaGlass");
+                var oDomRef = oDropZone && oDropZone.getDomRef ? oDropZone.getDomRef() : null;
+                if (!oDomRef) {
+                    return;
+                }
+
+                if (that._oUploadDropZoneDomRef && that._oUploadDropZoneDomRef !== oDomRef) {
+                    that._unbindDragAndDropUpload();
+                }
+
+                if (!that._fnUploadDragEnter) {
+                    that._fnUploadDragEnter = function (oEvent) {
+                        if (!that._hasFilesInDataTransfer(oEvent.dataTransfer)) {
+                            return;
+                        }
+                        oEvent.preventDefault();
+                        oEvent.stopPropagation();
+                        that._nUploadDragEnterCounter++;
+                        that._setUploadDragOverState(true);
+                    };
+                }
+
+                if (!that._fnUploadDragOver) {
+                    that._fnUploadDragOver = function (oEvent) {
+                        if (!that._hasFilesInDataTransfer(oEvent.dataTransfer)) {
+                            return;
+                        }
+                        oEvent.preventDefault();
+                        oEvent.stopPropagation();
+                        if (oEvent.dataTransfer) {
+                            oEvent.dataTransfer.dropEffect = "copy";
+                        }
+                        that._setUploadDragOverState(true);
+                    };
+                }
+
+                if (!that._fnUploadDragLeave) {
+                    that._fnUploadDragLeave = function (oEvent) {
+                        if (!that._hasFilesInDataTransfer(oEvent.dataTransfer)) {
+                            return;
+                        }
+                        oEvent.preventDefault();
+                        oEvent.stopPropagation();
+
+                        that._nUploadDragEnterCounter = Math.max(0, that._nUploadDragEnterCounter - 1);
+                        if (that._nUploadDragEnterCounter === 0) {
+                            that._setUploadDragOverState(false);
+                        }
+                    };
+                }
+
+                if (!that._fnUploadDrop) {
+                    that._fnUploadDrop = function (oEvent) {
+                        if (!that._hasFilesInDataTransfer(oEvent.dataTransfer)) {
+                            return;
+                        }
+                        oEvent.preventDefault();
+                        oEvent.stopPropagation();
+
+                        that._nUploadDragEnterCounter = 0;
+                        that._setUploadDragOverState(false);
+                        that._handleSelectedFiles(oEvent.dataTransfer ? oEvent.dataTransfer.files : null);
+                    };
+                }
+
+                if (that._oUploadDropZoneDomRef !== oDomRef) {
+                    oDomRef.addEventListener("dragenter", that._fnUploadDragEnter);
+                    oDomRef.addEventListener("dragover", that._fnUploadDragOver);
+                    oDomRef.addEventListener("dragleave", that._fnUploadDragLeave);
+                    oDomRef.addEventListener("drop", that._fnUploadDrop);
+                    that._oUploadDropZoneDomRef = oDomRef;
+                }
+            }, 300);
+        },
+
+        _unbindDragAndDropUpload: function () {
+            if (!this._oUploadDropZoneDomRef) {
+                return;
+            }
+
+            if (this._fnUploadDragEnter) {
+                this._oUploadDropZoneDomRef.removeEventListener("dragenter", this._fnUploadDragEnter);
+            }
+            if (this._fnUploadDragOver) {
+                this._oUploadDropZoneDomRef.removeEventListener("dragover", this._fnUploadDragOver);
+            }
+            if (this._fnUploadDragLeave) {
+                this._oUploadDropZoneDomRef.removeEventListener("dragleave", this._fnUploadDragLeave);
+            }
+            if (this._fnUploadDrop) {
+                this._oUploadDropZoneDomRef.removeEventListener("drop", this._fnUploadDrop);
+            }
+
+            this._setUploadDragOverState(false);
+            this._oUploadDropZoneDomRef = null;
+            this._nUploadDragEnterCounter = 0;
+        },
+
+        _hasFilesInDataTransfer: function (oDataTransfer) {
+            if (!oDataTransfer || !oDataTransfer.types) {
+                return false;
+            }
+
+            if (typeof oDataTransfer.types.contains === "function") {
+                return oDataTransfer.types.contains("Files");
+            }
+
+            return Array.prototype.indexOf.call(oDataTransfer.types, "Files") !== -1;
+        },
+
+        _setUploadDragOverState: function (bActive) {
+            if (!this._oUploadDropZoneDomRef) {
+                return;
+            }
+
+            if (bActive) {
+                this._oUploadDropZoneDomRef.classList.add("dragOver");
+            } else {
+                this._oUploadDropZoneDomRef.classList.remove("dragOver");
+            }
+        },
+
         onUploadFile: function () {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
@@ -1471,57 +1959,110 @@ sap.ui.define([
         },
 
         _handleFileSelect: function (oEvent) {
-            var oFile = oEvent.target.files[0];
-            var oModel = this.getView().getModel("chat");
-            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+            var oTarget = oEvent && oEvent.target ? oEvent.target : null;
+            var aFiles = oTarget && oTarget.files ? oTarget.files : null;
+            this._handleSelectedFiles(aFiles);
 
-            if (!oFile) {
+            if (oTarget) {
+                oTarget.value = "";
+            }
+        },
+
+        _handleSelectedFiles: function (aFileList) {
+            var aSelectedFiles = Array.prototype.slice.call(aFileList || []);
+            if (aSelectedFiles.length === 0) {
                 return;
             }
 
-            // 确保先创建会话，避免首条消息前的附件丢失。
+            var oModel = this.getView().getModel("chat");
+            var oI18n = this.getView().getModel("i18n").getResourceBundle();
+            var aExistingAttachments = oModel.getProperty("/attachments") || [];
+            var nRemainingSlots = FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION - aExistingAttachments.length;
+
+            if (nRemainingSlots <= 0) {
+                MessageToast.show(oI18n.getText("maxFilesReached") || ("Only " + FILE_UPLOAD_CONFIG.MAX_FILES_PER_SESSION + " files are allowed"));
+                return;
+            }
+
             this._ensureCurrentConversation(true);
 
-            if (oFile.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
-                MessageBox.error(
-                    (oI18n.getText("fileTooLarge") || "文件过大") +
-                    "，最大允许为 " + this._formatFileSize(FILE_UPLOAD_CONFIG.MAX_FILE_SIZE)
+            if (aSelectedFiles.length > nRemainingSlots) {
+                MessageToast.show(
+                    oI18n.getText("filesLimitedNotice", [nRemainingSlots]) ||
+                    ("Only the first " + nRemainingSlots + " files are accepted")
                 );
+                aSelectedFiles = aSelectedFiles.slice(0, nRemainingSlots);
+            }
+
+            var aAttachments = aExistingAttachments.slice();
+            var aNewAttachments = [];
+            var aValidationErrors = [];
+
+            aSelectedFiles.forEach(function (oFile) {
+                var sValidationError = this._validateFileForUpload(oFile, oI18n);
+                if (sValidationError) {
+                    aValidationErrors.push((oFile && oFile.name ? oFile.name : "unknown") + ": " + sValidationError);
+                    return;
+                }
+
+                var oAttachment = this._buildAttachmentFromFile(oFile, oI18n);
+                aAttachments.push(oAttachment);
+                aNewAttachments.push(oAttachment);
+            }.bind(this));
+
+            if (aValidationErrors.length > 0) {
+                MessageBox.error(aValidationErrors.join("\n"));
+            }
+
+            if (aNewAttachments.length === 0) {
                 return;
+            }
+
+            oModel.setProperty("/attachments", aAttachments);
+            this._updateCurrentConversationAttachments(aAttachments);
+            aNewAttachments.forEach(function (oAttachment) {
+                this._renderAttachmentCard(oAttachment);
+                this._uploadFile(oAttachment);
+            }.bind(this));
+            this._updateAttachmentAreaVisibility();
+        },
+
+        _buildAttachmentFromFile: function (oFile, oI18n) {
+            var sFileName = oFile.name || "";
+            var nLastDot = sFileName.lastIndexOf(".");
+            var sExt = nLastDot >= 0 ? sFileName.substring(nLastDot + 1).toLowerCase() : "";
+
+            return {
+                id: this._generateUUID(),
+                file: oFile,
+                fileName: oFile.name,
+                fileSize: oFile.size,
+                fileExt: sExt,
+                status: "uploading",
+                progress: 0,
+                fileId: null,
+                message: oI18n.getText("uploading") || "Uploading..."
+            };
+        },
+
+        _validateFileForUpload: function (oFile, oI18n) {
+            if (!oFile) {
+                return oI18n.getText("fileUploadError") || "Invalid file";
+            }
+
+            if (oFile.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) {
+                return (oI18n.getText("fileTooLarge") || "File too large") +
+                    " (max " + this._formatFileSize(FILE_UPLOAD_CONFIG.MAX_FILE_SIZE) + ")";
             }
 
             var sFileName = oFile.name || "";
             var nLastDot = sFileName.lastIndexOf(".");
             var sExt = nLastDot >= 0 ? sFileName.substring(nLastDot).toLowerCase() : "";
-            if (!sExt || !FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(sExt)) {
-                MessageBox.error(
-                    (oI18n.getText("unsupportedFileType") || "不支持的文件类型") + ": " + (sExt || sFileName || "unknown")
-                );
-                return;
+            if (!sExt || FILE_UPLOAD_CONFIG.ALLOWED_EXTENSIONS.indexOf(sExt) === -1) {
+                return (oI18n.getText("unsupportedFileType") || "Unsupported file type") + ": " + (sExt || sFileName || "unknown");
             }
 
-            var oAttachment = {
-                id: this._generateUUID(),
-                file: oFile,
-                fileName: oFile.name,
-                fileSize: oFile.size,
-                fileExt: sExt.substring(1),
-                status: 'uploading',
-                progress: 0,
-                fileId: null,
-                message: oI18n.getText("uploading") || "上传中..."
-            };
-
-            var aAttachments = oModel.getProperty("/attachments") || [];
-            aAttachments.push(oAttachment);
-            oModel.setProperty("/attachments", aAttachments);
-            this._updateCurrentConversationAttachments(aAttachments);
-
-            this._renderAttachmentCard(oAttachment);
-
-            this._updateAttachmentAreaVisibility();
-
-            this._uploadFile(oAttachment);
+            return "";
         },
 
         _loadScript: function (sUrl, sGlobalVar) {
@@ -1794,6 +2335,25 @@ sap.ui.define([
             }
         },
 
+        _mergeAttachmentPayloads: function (oPrimaryPayload, oSecondaryPayload) {
+            var oMergedPayload = {
+                attachments: [],
+                contextText: ""
+            };
+
+            var aPrimaryAttachments = Array.isArray(oPrimaryPayload && oPrimaryPayload.attachments) ? oPrimaryPayload.attachments : [];
+            var aSecondaryAttachments = Array.isArray(oSecondaryPayload && oSecondaryPayload.attachments) ? oSecondaryPayload.attachments : [];
+            oMergedPayload.attachments = aPrimaryAttachments.concat(aSecondaryAttachments);
+
+            var sPrimaryContext = oPrimaryPayload && oPrimaryPayload.contextText ? String(oPrimaryPayload.contextText).trim() : "";
+            var sSecondaryContext = oSecondaryPayload && oSecondaryPayload.contextText ? String(oSecondaryPayload.contextText).trim() : "";
+            oMergedPayload.contextText = [sPrimaryContext, sSecondaryContext].filter(function (sBlock) {
+                return Boolean(sBlock);
+            }).join("\n\n");
+
+            return oMergedPayload;
+        },
+
         _extractReadyAttachmentsForSend: function () {
             var oModel = this.getView().getModel("chat");
             var aAttachments = oModel.getProperty("/attachments") || [];
@@ -1888,6 +2448,14 @@ sap.ui.define([
             }
             this._oBoundFileInput = null;
             this._fnFileInputChange = null;
+
+            this._unbindDragAndDropUpload();
+            this._fnUploadDragEnter = null;
+            this._fnUploadDragOver = null;
+            this._fnUploadDragLeave = null;
+            this._fnUploadDrop = null;
+            this._oPendingResubmitPayload = null;
+            this._bEditLastUserDialogOpen = false;
         }
     });
 });

@@ -49,21 +49,17 @@ function npmCmd() {
     return "npm";
 }
 
-function npxCmd() {
-    return "npx";
-}
-
 function main() {
     const useCmdShim = process.platform === "win32";
 
     runStep("Run lint", npmCmd(), ["run", "lint"], useCmdShim);
 
     const syntaxTargets = [
-        "srv/server.js",
-        "srv/chat-service.js",
         "app/ai-chat-gui/webapp/controller/Main.controller.js",
         "app/ai-chat-gui/webapp/controller/Diagram.controller.js",
         "app/ai-chat-gui/webapp/controller/Home.controller.js",
+        "app/ai-chat-gui/webapp/service/AIConfig.js",
+        "app/ai-chat-gui/webapp/service/DashScopeClient.js",
         "app/ai-chat-gui/webapp/Component.js",
         "app/ai-chat-gui/webapp/util/Utils.js"
     ];
@@ -72,7 +68,6 @@ function main() {
         runStep(`Syntax check ${target}`, process.execPath, ["--check", target]);
     });
 
-    runStep("Compile CDS models", npxCmd(), ["cds", "compile", "db/schema.cds", "srv/chat-service.cds", "app/services.cds"], useCmdShim);
     runStep("Build UI5 app", npmCmd(), ["--workspace", "app/ai-chat-gui", "run", "build"], useCmdShim);
 
     console.log("[verify] All checks passed.");

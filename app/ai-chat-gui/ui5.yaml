@@ -16,9 +16,6 @@ server:
             - /resources
             - /test-resources
           url: https://sapui5.hana.ondemand.com
-        backend:
-          - path: /api
-            url: http://localhost:4004
 
     - name: fiori-tools-appreload
       afterMiddleware: compression
@@ -36,11 +33,9 @@ server:
 builder:
   resources:
     excludes:
-      # 排除高亮库，避免被打入 preload/bundle
       - "webapp/lib/highlight.min.js"
       - "com/ai/assistant/aichatapp/lib/highlight.min.js"
 
-  # 同步从 Component-preload 排除高亮库，避免构建阶段误打包
   componentPreload:
     excludes:
       - "com/ai/assistant/aichatapp/lib/highlight.min.js"

@@ -2,8 +2,9 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "com/ai/assistant/aichatapp/util/Utils"
-], function (Controller, MessageBox, MessageToast, Utils) {
+    "com/ai/assistant/aichatapp/util/Utils",
+    "com/ai/assistant/aichatapp/service/DashScopeClient"
+], function (Controller, MessageBox, MessageToast, Utils, DashScopeClient) {
     "use strict";
 
     var FILE_UPLOAD_CONFIG = {
@@ -970,26 +971,8 @@ sap.ui.define([
                 }
             };
 
-            fetch("/api/chat/stream", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(oRequestBody),
-                signal: oAbortController.signal
-            }).then(function (response) {
-                if (!response.ok) {
-                    return response.text().then(function (sRawError) {
-                        var sBackendError = that._extractBackendErrorMessage(sRawError, oI18n.getText("networkError"));
-                        throw new Error(sBackendError);
-                    });
-                }
-
-                if (!response.body) {
-                    throw new Error(oI18n.getText("streamNotSupported"));
-                }
-
-                return Utils.parseSSEStream(response, {
+            DashScopeClient.streamChat(Object.assign({}, oRequestBody, {
+                signal: oAbortController.signal,
                     onData: function (oData) {
                         if (oData.error) {
                             if (!sStreamError) {
@@ -1052,8 +1035,7 @@ sap.ui.define([
                         finalizeRequest();
                         MessageToast.show(oI18n.getText("connectionInterrupted"));
                     }
-                });
-            }).catch(function (error) {
+            })).catch(function (error) {
                 if (error && error.name === "AbortError") {
                     finalizeRequest();
                     return;

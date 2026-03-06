@@ -2,8 +2,9 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageToast",
     "sap/ui/model/json/JSONModel",
-    "com/ai/assistant/aichatapp/util/Utils"
-], function (Controller, MessageToast, JSONModel, Utils) {
+    "com/ai/assistant/aichatapp/util/Utils",
+    "com/ai/assistant/aichatapp/service/DashScopeClient"
+], function (Controller, MessageToast, JSONModel, Utils, DashScopeClient) {
     "use strict";
 
     return Controller.extend("com.ai.assistant.aichatapp.controller.Diagram", {
@@ -381,23 +382,8 @@ sap.ui.define([
             };
 
             // 调用流式 API
-            fetch("/api/chat/stream", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(oRequestBody),
-                signal: oAbortController.signal
-            }).then(function (response) {
-                if (!response.ok) {
-                    throw new Error(that._getI18nText("networkError"));
-                }
-
-                if (!response.body) {
-                    throw new Error(that._getI18nText("streamNotSupported"));
-                }
-
-                return Utils.parseSSEStream(response, {
+            DashScopeClient.streamChat(Object.assign({}, oRequestBody, {
+                signal: oAbortController.signal,
                     onData: function (oData) {
                         if (oData.error) {
                             if (!sStreamError) {
@@ -438,8 +424,7 @@ sap.ui.define([
                         }
                         finalizeRequest();
                     }
-                });
-            }).catch(function (error) {
+            })).catch(function (error) {
                 if (error && error.name === "AbortError") {
                     finalizeRequest();
                     return;
