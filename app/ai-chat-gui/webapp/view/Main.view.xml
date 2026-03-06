@@ -185,7 +185,7 @@
                                     id="messageInput"
                                     value="{chat>/inputValue}"
                                     placeholder="{i18n>inputPlaceholder}"
-                                    maxLength="4000"
+                                    maxLength="120000"
                                     rows="1"
                                     growing="true"
                                     growingMaxLines="6"

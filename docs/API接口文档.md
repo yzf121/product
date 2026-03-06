@@ -49,6 +49,7 @@ interface ChatStreamRequest {
 ### 1.3 行为说明
 
 - `message` 为空时：返回 `400` JSON 错误。
+- `message` 超过 `120000` 字符时：返回 `413` JSON 错误。
 - 有 `sessionId` 时：后端优先走 `session_id` 模式。
 - 无 `sessionId` 但有 `messages` 时：走降级历史消息模式。
 - 都没有时：按新会话模式处理。
@@ -99,7 +100,7 @@ data: [DONE]
 | --- | --- |
 | `200` | 正常 SSE 返回（含业务错误事件） |
 | `400` | `message` 为空、JSON 语法错误 |
-| `413` | 请求体超过限制（默认 `20mb`，可通过 `CHAT_REQUEST_LIMIT` 调整） |
+| `413` | 请求体超过限制（默认 `20mb`）或 `message` 超过 `120000` 字符 |
 | `500` | 中间件或服务端异常 |
 
 ## 2. `POST /api/chat/sendMessage`（备用）

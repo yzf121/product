@@ -31,8 +31,7 @@ sap.ui.define([
     };
 
     var CHAT_REQUEST_LIMITS = {
-        MAX_USER_MESSAGE_LENGTH: 120000,
-        MAX_PROMPT_LENGTH: 110000
+        MAX_USER_MESSAGE_LENGTH: 120000
     };
 
     return Controller.extend("com.ai.assistant.aichatapp.controller.Main", {
@@ -789,7 +788,7 @@ sap.ui.define([
 
             var sTrimmedMessage = sMessage.trim();
             if (sTrimmedMessage.length > CHAT_REQUEST_LIMITS.MAX_USER_MESSAGE_LENGTH) {
-                MessageToast.show("消息过长，请精简后重试");
+                MessageToast.show("消息过长，当前最多支持 120000 个字符");
                 return;
             }
 
@@ -1586,7 +1585,7 @@ sap.ui.define([
         _buildPromptWithContext: function (sMessage, sContextText) {
             var sSafeMessage = typeof sMessage === "string" ? sMessage : "";
             var sSafeContext = typeof sContextText === "string" ? sContextText : "";
-            var nPromptLimit = CHAT_REQUEST_LIMITS.MAX_PROMPT_LENGTH;
+            var nPromptLimit = CHAT_REQUEST_LIMITS.MAX_USER_MESSAGE_LENGTH;
 
             if (!sSafeContext) {
                 return sSafeMessage.slice(0, nPromptLimit);
