@@ -33,7 +33,7 @@ sap.ui.define([
 
     var CHAT_REQUEST_LIMITS = {
         MAX_USER_MESSAGE_LENGTH: 120000,
-        MAX_PROMPT_LENGTH: 110000
+        MAX_PROMPT_LENGTH: 120000
     };
 
     return Controller.extend("com.ai.assistant.aichatapp.controller.Main", {

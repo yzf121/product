@@ -36,6 +36,7 @@
 
                     <Label text="{i18n>settingsDefaultApiKey}" class="sapUiTinyMarginTop" />
                     <Input value="{settings>/defaultApiKey}" type="Password" />
+                    <Text text="{i18n>settingsSecretMaskHint}" wrapping="true" class="sapUiTinyMarginTop sapUiSmallMarginBottom" />
 
                     <Label text="{i18n>settingsAssistantAppIds}" class="sapUiTinyMarginTop" />
                     <TextArea value="{settings>/appIdsJson}" rows="10" growing="true" growingMaxLines="16" />

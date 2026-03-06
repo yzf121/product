@@ -3,6 +3,7 @@ sap.ui.define([], function () {
 
     var GLOBAL_CONFIG_KEY = "__AI_CHAT_CONFIG__";
     var USER_CONFIG_STORAGE_KEY = "ai_chat_runtime_config_v1";
+    var SECRET_MASK = "__CONFIGURED__";
     var DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com/api/v1";
     var DEFAULT_DEV_PROXY_PATH = "/dashscope-api";
     var DEFAULT_TIMEOUT_MS = 60000;
@@ -43,6 +44,14 @@ sap.ui.define([], function () {
         return typeof value === "string" ? value.trim() : "";
     }
 
+    function hasOwnKey(object, key) {
+        return Boolean(object) && Object.prototype.hasOwnProperty.call(object, key);
+    }
+
+    function hasSecretValue(value) {
+        return Boolean(normalizeString(value));
+    }
+
     function normalizeTimeout(value) {
         var parsed = Number.parseInt(value, 10);
         return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
@@ -65,6 +74,16 @@ sap.ui.define([], function () {
             appIds: createEmptyMap(),
             apiKeys: createEmptyMap()
         };
+    }
+
+    function createMaskedSecretMap(secretMap) {
+        var result = createEmptyMap();
+
+        AI_TYPES.forEach(function (aiType) {
+            result[aiType] = hasSecretValue(secretMap && secretMap[aiType]) ? SECRET_MASK : "";
+        });
+
+        return result;
     }
 
     function copyKnownKeys(target, source) {
@@ -249,8 +268,44 @@ sap.ui.define([], function () {
         };
     }
 
+    function resolveStoredSecretValue(rawConfig, propertyName, currentUserValue) {
+        if (!hasOwnKey(rawConfig, propertyName)) {
+            return normalizeString(currentUserValue);
+        }
+
+        var rawValue = normalizeString(rawConfig[propertyName]);
+
+        if (rawValue === SECRET_MASK) {
+            return normalizeString(currentUserValue);
+        }
+
+        return rawValue;
+    }
+
+    function resolveStoredSecretMap(rawMap, currentUserMap) {
+        var result = createEmptyMap();
+
+        AI_TYPES.forEach(function (aiType) {
+            if (!hasOwnKey(rawMap, aiType)) {
+                result[aiType] = normalizeString(currentUserMap && currentUserMap[aiType]);
+                return;
+            }
+
+            var rawValue = normalizeString(rawMap[aiType]);
+            result[aiType] = rawValue === SECRET_MASK ? normalizeString(currentUserMap && currentUserMap[aiType]) : rawValue;
+        });
+
+        return result;
+    }
+
     function saveUserConfig(rawConfig) {
         var normalizedConfig = normalizeConfig(rawConfig);
+        var currentUserConfig = getUserConfig() || createDefaultConfig();
+        var rawApiKeys = rawConfig && typeof rawConfig === "object" ? (rawConfig.apiKeys || rawConfig.assistantApiKeys) : null;
+
+        normalizedConfig.defaultApiKey = resolveStoredSecretValue(rawConfig, "defaultApiKey", currentUserConfig.defaultApiKey);
+        normalizedConfig.apiKeys = resolveStoredSecretMap(rawApiKeys, currentUserConfig.apiKeys);
+
         localStorage.setItem(USER_CONFIG_STORAGE_KEY, JSON.stringify(normalizedConfig));
         return normalizedConfig;
     }
@@ -260,7 +315,17 @@ sap.ui.define([], function () {
     }
 
     function getEditableConfig() {
-        return clone(getEffectiveConfig());
+        var effectiveConfig = getEffectiveConfig();
+
+        return {
+            endpoint: effectiveConfig.endpoint,
+            devProxyPath: effectiveConfig.devProxyPath,
+            timeoutMs: effectiveConfig.timeoutMs,
+            defaultAppId: effectiveConfig.defaultAppId,
+            defaultApiKey: hasSecretValue(effectiveConfig.defaultApiKey) ? SECRET_MASK : "",
+            appIds: clone(effectiveConfig.appIds),
+            apiKeys: createMaskedSecretMap(effectiveConfig.apiKeys)
+        };
     }
 
     function toPrettyJson(value) {
@@ -279,6 +344,7 @@ sap.ui.define([], function () {
         getEditableConfig: getEditableConfig,
         saveUserConfig: saveUserConfig,
         clearUserConfig: clearUserConfig,
+        SECRET_MASK: SECRET_MASK,
         toPrettyJson: toPrettyJson
     };
 });
