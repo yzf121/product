@@ -4,6 +4,7 @@
     // Generated from .env by scripts/migrate-env-to-ai-config.js
     global.__AI_CHAT_CONFIG__ = Object.assign({}, global.__AI_CHAT_CONFIG__, {
         "endpoint": "https://dashscope.aliyuncs.com/api/v1",
+        "devProxyPath": "/dashscope-api",
         "timeoutMs": 60000,
         "defaultAppId": "07938ead8a6d4ddbba756fb0d60d8da3",
         "defaultApiKey": "sk-fd55721bc4d742d68e0bfe6b6a6cfa23",

@@ -25,6 +25,9 @@
                     <Label text="{i18n>settingsEndpoint}" />
                     <Input value="{settings>/endpoint}" />
 
+                    <Label text="{i18n>settingsDevProxyPath}" class="sapUiTinyMarginTop" />
+                    <Input value="{settings>/devProxyPath}" />
+
                     <Label text="{i18n>settingsTimeoutMs}" class="sapUiTinyMarginTop" />
                     <Input value="{settings>/timeoutMs}" type="Number" />
 

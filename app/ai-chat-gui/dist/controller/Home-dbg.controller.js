@@ -54,6 +54,7 @@ sap.ui.define([
                 sourceText: aSources.join(" + ") || (oI18n ? oI18n.getText("settingsSourceNone") : "Not configured"),
                 hasUserOverride: oStatus.hasUserOverride,
                 endpoint: oConfig.endpoint,
+                devProxyPath: oConfig.devProxyPath,
                 timeoutMs: oConfig.timeoutMs,
                 defaultAppId: oConfig.defaultAppId,
                 defaultApiKey: oConfig.defaultApiKey,
@@ -213,6 +214,7 @@ sap.ui.define([
             try {
                 AIConfig.saveUserConfig({
                     endpoint: this._oSettingsModel.getProperty("/endpoint"),
+                    devProxyPath: this._oSettingsModel.getProperty("/devProxyPath"),
                     timeoutMs: this._oSettingsModel.getProperty("/timeoutMs"),
                     defaultAppId: this._oSettingsModel.getProperty("/defaultAppId"),
                     defaultApiKey: this._oSettingsModel.getProperty("/defaultApiKey"),

@@ -16,6 +16,10 @@ server:
             - /resources
             - /test-resources
           url: https://sapui5.hana.ondemand.com
+        backend:
+          - path: /dashscope-api
+            pathReplace: /api/v1
+            url: https://dashscope.aliyuncs.com
 
     - name: fiori-tools-appreload
       afterMiddleware: compression

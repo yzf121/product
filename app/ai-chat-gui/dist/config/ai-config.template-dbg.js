@@ -3,6 +3,7 @@
 
     global.__AI_CHAT_CONFIG__ = Object.assign({}, global.__AI_CHAT_CONFIG__, {
         endpoint: "https://dashscope.aliyuncs.com/api/v1",
+        devProxyPath: "/dashscope-api",
         timeoutMs: 60000,
         defaultAppId: "replace-with-your-default-app-id",
         defaultApiKey: "replace-with-your-default-api-key",

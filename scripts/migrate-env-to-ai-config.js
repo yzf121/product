@@ -100,6 +100,7 @@ function buildConfig(envConfig) {
 
     return {
         endpoint: envConfig.DASHSCOPE_ENDPOINT || DEFAULT_ENDPOINT,
+        devProxyPath: envConfig.DASHSCOPE_DEV_PROXY_PATH || "/dashscope-api",
         timeoutMs: normalizeTimeout(envConfig.DASHSCOPE_TIMEOUT_MS || envConfig.API_TIMEOUT),
         defaultAppId: envConfig.DASHSCOPE_APP_ID || envConfig.DASHSCOPE_APP_ID_ABAP || "",
         defaultApiKey: envConfig.DASHSCOPE_API_KEY || "",

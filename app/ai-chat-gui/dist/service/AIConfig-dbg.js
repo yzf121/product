@@ -4,6 +4,7 @@ sap.ui.define([], function () {
     var GLOBAL_CONFIG_KEY = "__AI_CHAT_CONFIG__";
     var USER_CONFIG_STORAGE_KEY = "ai_chat_runtime_config_v1";
     var DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com/api/v1";
+    var DEFAULT_DEV_PROXY_PATH = "/dashscope-api";
     var DEFAULT_TIMEOUT_MS = 60000;
     var AI_TYPES = [
         "abap-clean-core",
@@ -57,6 +58,7 @@ sap.ui.define([], function () {
     function createDefaultConfig() {
         return {
             endpoint: DEFAULT_ENDPOINT,
+            devProxyPath: DEFAULT_DEV_PROXY_PATH,
             timeoutMs: DEFAULT_TIMEOUT_MS,
             defaultAppId: "",
             defaultApiKey: "",
@@ -131,12 +133,27 @@ sap.ui.define([], function () {
 
         return {
             endpoint: normalizeString(config.endpoint) || defaultConfig.endpoint,
+            devProxyPath: normalizeString(config.devProxyPath) || defaultConfig.devProxyPath,
             timeoutMs: normalizeTimeout(config.timeoutMs),
             defaultAppId: normalizeString(config.defaultAppId) || normalizeString(config.DASHSCOPE_APP_ID),
             defaultApiKey: normalizeString(config.defaultApiKey) || normalizeString(config.DASHSCOPE_API_KEY),
             appIds: appIds,
             apiKeys: apiKeys
         };
+    }
+
+    function isLocalDevRuntime() {
+        var hostname = normalizeString(window.location && window.location.hostname).toLowerCase();
+        return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
+    }
+
+    function resolveRuntimeEndpoint(config) {
+        var proxyPath = normalizeString(config && config.devProxyPath);
+        if (isLocalDevRuntime() && proxyPath) {
+            return proxyPath;
+        }
+
+        return normalizeString(config && config.endpoint) || DEFAULT_ENDPOINT;
     }
 
     function mergeMaps(baseMap, overrideMap) {
@@ -153,6 +170,7 @@ sap.ui.define([], function () {
 
         return {
             endpoint: normalizeString(override.endpoint) || normalizeString(base.endpoint) || DEFAULT_ENDPOINT,
+            devProxyPath: normalizeString(override.devProxyPath) || normalizeString(base.devProxyPath) || DEFAULT_DEV_PROXY_PATH,
             timeoutMs: normalizeTimeout(override.timeoutMs || base.timeoutMs),
             defaultAppId: normalizeString(override.defaultAppId) || normalizeString(base.defaultAppId),
             defaultApiKey: normalizeString(override.defaultApiKey) || normalizeString(base.defaultApiKey),
@@ -202,7 +220,9 @@ sap.ui.define([], function () {
         var apiKey = normalizeString(config.apiKeys[normalizedType]) || config.defaultApiKey;
 
         return {
-            endpoint: config.endpoint,
+            endpoint: resolveRuntimeEndpoint(config),
+            configuredEndpoint: config.endpoint,
+            devProxyPath: config.devProxyPath,
             timeoutMs: config.timeoutMs,
             appId: appId,
             apiKey: apiKey,
